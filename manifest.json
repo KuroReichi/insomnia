@@ -1,0 +1,42 @@
+{
+	"format_version": 2,
+	"header": {
+		"name": "Miaw's API Core",
+		"description": "By KuroReichii (Private Use).",
+		"uuid": "1990a121-3ee2-4c1d-ba25-d8454911c4be",
+		"version": [1, 0, 0],
+		"min_engine_version": [1, 26, 3]
+	},
+	"metadata": {
+		"authors": ["KuroReichii"],
+		"url": "https://github.com/KuroReichi/"
+	},
+	"modules": [
+		{
+			"type": "data",
+			"uuid": "9d8e18e1-d179-4d42-ace6-2e1d07c6dea5",
+			"version": [1, 0, 0]
+		},
+		{
+			"uuid": "239c134f-67bf-4738-9bcc-8c69d31b1f72",
+			"version": [1, 2, 1],
+			"type": "script",
+			"language": "javascript",
+			"entry": "scripts/index.js"
+		}
+	],
+	"dependencies": [
+		{
+			"module_name": "@minecraft/server",
+			"version": "2.9.0-beta"
+		},
+		{
+			"module_name": "@minecraft/server-ui",
+			"version": "2.2.0-beta"
+		},
+		{
+			"module_name": "@minecraft/common",
+			"version": "1.3.0"
+		}
+	]
+}
