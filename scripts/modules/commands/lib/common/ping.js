@@ -1,5 +1,5 @@
 import { Player } from "@minecraft/server";
-import { registerCommand, getCommands } from "../../core/registry.js";
+import { registerCommand } from "../../core/registry";
 
 /** @param {Player} player */
 function Ping(player) {
@@ -8,6 +8,6 @@ function Ping(player) {
 
 registerCommand({
 	name: "ping",
-	description: "Returns your ping",
+	description: "Display your ping",
 	run: Ping
 });

@@ -40,7 +40,7 @@ function getDayPassed() {
 	startDate.setHours(0, 0, 0, 0);
 	nowDate.setHours(0, 0, 0, 0);
 
-	const diff = nowDate - startDate;
+	const diff = Number(nowDate) - Number(startDate);
 	return Math.max(Math.floor(diff / 86400000), 0);
 }
 

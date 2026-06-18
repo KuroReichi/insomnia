@@ -1,45 +1,14 @@
 export const configs = {
 	commandPrefix: "!",
 	server: {
-		name: "Qyrogata",
-		subname: "Beyond Magic of Nirvane",
-		studio: {
-			name: "Legiun Studio",
-			owner: "Kuro Reichi",
-			licensedWith: "MIT License",
-		},
-		staff: ["KuroReichii", "OscarJofaXD"],
-		forceGamerule: true,
-		gamerules: {
-			commandBlocksEnabled: false,
-			commandBlockOutput: true,
-			doDaylightCycle: false,
-			doEntityDrops: true,
-			doFireTick: true,
-			doImmediateRespawn: false,
-			doInsomnia: true,
-			doLimitedCrafting: false,
-			doMobLoot: true,
-			doMobSpawning: true,
-			doTileDrops: true,
-			doWeatherCycle: true,
-			drowningDamage: true,
-			fallDamage: true,
-			fireDamage: true,
-			freezeDamage: true,
-			functionCommandLimit: 10000,
-			keepInventory: false,
-			maxCommandChainLength: 65536,
-			mobGriefing: true,
-			naturalRegeneration: true,
-			pvp: true,
-			randomTickSpeed: 3,
-			sendCommandFeedback: true,
-			showCoordinates: false,
-			showDeathMessages: true,
-			showTags: true,
-			spawnRadius: 0,
-			tntExplodes: true,
-		},
-	},
+		name: "Insomnia Lifesteal",
+		subname: null,
+		founder: "KuroReichii",
+		license: "MIT",
+		production: "Legiun Studio"
+	}
 };
+
+/**
+ * @name
+ */

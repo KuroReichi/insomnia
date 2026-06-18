@@ -1,0 +1,16 @@
+{
+	"name": "miaw",
+	"version": "1.0.0",
+	"main": "scripts/index.js",
+	"keywords": [],
+	"dependencies": {
+		"@minecraft/server-ui": "^2.2.0-beta.1.26.30-stable"
+	},
+	"devDependencies": {
+		"@minecraft/server": "^2.9.0-beta.1.26.30-stable",
+		"prettier": "3.8.4",
+		"typescript": "^6.0.3"
+	},
+	"author": "KuroReichi",
+	"license": "MIT"
+}

@@ -1,6 +1,42 @@
 import { Player } from "@minecraft/server";
-import { registerCommand, getCommands } from "../../core/registry.js";
+import { registerCommand, getCommands } from "../../core/registry";
 import { configs } from "../../../../core/configs.js";
+
+/**
+ * @callback CommandExecutor
+ * @param {import("@minecraft/server").Player} player
+ * @param {any} args
+ * @returns {void}
+ */
+
+/**
+ * @typedef {Object} CommandNode
+ * @property {"literal"|"argument"} type
+ * @property {string} name
+ * @property {string} [argType]
+ * @property {CommandExecutor} [run]
+ * @property {CommandNode[]} [children]
+ */
+
+/**
+ * @typedef {Object} Command
+ * @property {string} name
+ * @property {string[]} [aliases]
+ * @property {string} [description]
+ * @property {CommandExecutor} [run]
+ * @property {CommandNode[]} [children]
+ */
+
+/**
+ * @typedef {Object} Suggestion
+ * @property {string} name
+ * @property {number} score
+ */
+
+/**
+ * @typedef {Object} HelpArgs
+ * @property {string} query
+ */
 
 const PAGE_SIZE = 10;
 const prefix = configs.commandPrefix;
@@ -8,10 +44,13 @@ const prefix = configs.commandPrefix;
 export let cacheVersion = 0;
 
 let lastVersion = -1;
+
+/** @type {Command[] | null} */
 let cachedCommands = null;
 
 /**
  * @name bumpCommandVersion
+ * @returns {void}
  */
 export function bumpCommandVersion() {
 	cacheVersion++;
@@ -19,25 +58,34 @@ export function bumpCommandVersion() {
 
 /**
  * @name getSortedCommands
+ * @returns {Command[]}
  */
 function getSortedCommands() {
 	if (lastVersion !== cacheVersion) {
 		cachedCommands = getCommands()
 			.slice()
-			.sort((a, b) =>
-				a.name.localeCompare(b.name, undefined, {
-					sensitivity: "base",
-				}),
+			.sort(
+				/**
+				 * @param {Command} a
+				 * @param {Command} b
+				 */
+				(a, b) =>
+					a.name.localeCompare(b.name, undefined, {
+						sensitivity: "base"
+					})
 			);
 
 		lastVersion = cacheVersion;
 	}
+
 	return cachedCommands ?? [];
 }
+
 /**
  * @name highlightMatch
  * @param {string} text
  * @param {string} query
+ * @returns {string}
  */
 function highlightMatch(text, query) {
 	const lower = text.toLowerCase();
@@ -48,29 +96,24 @@ function highlightMatch(text, query) {
 		return text;
 	}
 
-	return (
-		text.slice(0, i) +
-		"§e" +
-		text.slice(i, i + query.length) +
-		"§r§f" +
-		text.slice(i + query.length)
-	);
+	return text.slice(0, i) + "§e" + text.slice(i, i + query.length) + "§r§f" + text.slice(i + query.length);
 }
 
 /**
  * @name buildUsages
- * @param {object} node
- * @param {string[]} path
+ * @param {Command|CommandNode} node
+ * @param {string[]} [path=[]]
  * @returns {string[]}
  */
 function buildUsages(node, path = []) {
+	/** @type {string[]} */
 	const usages = [];
 
 	if (node.run) {
 		usages.push(path.join(" "));
 	}
 
-	if (!node.children) {
+	if (!node.children || node.children.length === 0) {
 		return usages;
 	}
 
@@ -78,12 +121,7 @@ function buildUsages(node, path = []) {
 		if (child.type === "literal") {
 			usages.push(...buildUsages(child, [...path, child.name]));
 		} else if (child.type === "argument") {
-			usages.push(
-				...buildUsages(child, [
-					...path,
-					`<${child.name}:${child.argType}>`,
-				]),
-			);
+			usages.push(...buildUsages(child, [...path, `<${child.name}:${child.argType ?? "string"}>`]));
 		}
 	}
 
@@ -130,14 +168,16 @@ const MIN_SCORE = 6;
 
 /**
  * @name getSuggestions
- * @param {Array<any>} commands
+ * @param {Command[]} commands
  * @param {string} query
+ * @returns {Suggestion[]}
  */
 function getSuggestions(commands, query) {
 	if (query.length < 2) {
 		return [];
 	}
 
+	/** @type {Map<string, Suggestion>} */
 	const map = new Map();
 
 	for (const cmd of commands) {
@@ -151,31 +191,31 @@ function getSuggestions(commands, query) {
 		if (score >= MIN_SCORE) {
 			map.set(cmd.name, {
 				name: cmd.name,
-				score,
+				score
 			});
 		}
 	}
 
 	return [...map.values()]
 		.sort(
+			/**
+			 * @param {Suggestion} a
+			 * @param {Suggestion} b
+			 */
 			(a, b) =>
 				b.score - a.score ||
 				a.name.localeCompare(b.name, undefined, {
-					sensitivity: "base",
-				}),
+					sensitivity: "base"
+				})
 		)
 		.slice(0, 5);
 }
 
 /**
- * @typedef {Object} Arguments
- * @property {string} query
- */
-
-/**
  * @name helpCommand
  * @param {Player} player
- * @param {Arguments} args
+ * @param {HelpArgs} args
+ * @returns {void}
  */
 export function helpCommand(player, args) {
 	const commands = getSortedCommands();
@@ -192,41 +232,40 @@ export function helpCommand(player, args) {
 		const end = start + PAGE_SIZE;
 		const list = commands.slice(start, end);
 
-		player.sendMessage(
-			`§2--- §aShowing help page §7${page} §aof §7${totalPages} §g(§6${prefix}§ehelp§g) §2---§r`,
-		);
+		player.sendMessage(`§2--- §aShowing help page §7${page} §aof §7${totalPages} §g(§6${prefix}§ehelp§g) §2---§r`);
 
 		for (const cmd of list) {
 			const sortedAliases =
-				cmd.aliases
-					?.slice()
-					.sort((a, b) =>
-						a.localeCompare(b, undefined, { sensitivity: "base" }),
-					) || [];
-			const aliasText = sortedAliases.length
-				? ` §2[§a${sortedAliases.join("§7, §a")}§2]§r`
-				: "";
+				cmd.aliases?.slice().sort(
+					/**
+					 * @param {string} a
+					 * @param {string} b
+					 */
+					(a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })
+				) || [];
 
-			player.sendMessage(
-				`  §2» §f${prefix}${cmd.name}${aliasText} §7- §f${cmd.description ?? "No description"}`,
-			);
+			const aliasText = sortedAliases.length ? ` §2[§a${sortedAliases.join("§7, §a")}§2]§r` : "";
+
+			player.sendMessage(`  §2» §f${prefix}${cmd.name}${aliasText} §7- §f${cmd.description ?? "No description"}`);
 		}
 
 		if (totalPages > 1) {
-			player.sendMessage(
-				`§7Use ${prefix}help <page:int> to navigate pages`,
-			);
+			player.sendMessage(`§7Use ${prefix}help <page:int> to navigate pages`);
 		}
 
-		player.sendMessage(
-			`§7Use ${prefix}help <commandName:string> for the details`,
-		);
+		player.sendMessage(`§7Use ${prefix}help <commandName:string> for the details`);
 		return;
 	}
 
 	const name = arg.toLowerCase();
+
+	/** @type {Command | undefined} */
 	const command = commands.find(
-		(c) => c.name === name || (c.aliases ?? []).includes(name),
+		/**
+		 * @param {Command} c
+		 * @returns {boolean}
+		 */
+		c => c.name === name || (c.aliases ?? []).includes(name)
 	);
 
 	if (!command) {
@@ -237,9 +276,9 @@ export function helpCommand(player, args) {
 				{ text: "§c" },
 				{
 					translate: "commands.generic.unknown",
-					with: [`§7${name}§c`],
-				},
-			],
+					with: [`§7${name}§c`]
+				}
+			]
 		});
 
 		if (suggestions.length > 0) {
@@ -248,9 +287,7 @@ export function helpCommand(player, args) {
 			player.sendMessage(`§8Showing ${suggestions.length} suggestion(s)`);
 
 			for (const s of suggestions) {
-				player.sendMessage(
-					`  §e» §f${prefix}${highlightMatch(s.name, name)}`,
-				);
+				player.sendMessage(`  §e» §f${prefix}${highlightMatch(s.name, name)}`);
 			}
 		}
 		return;
@@ -263,11 +300,14 @@ export function helpCommand(player, args) {
 	}
 
 	if (command.aliases?.length) {
-		const sortedAliases = command.aliases
-			.slice()
-			.sort((a, b) =>
-				a.localeCompare(b, undefined, { sensitivity: "base" }),
-			);
+		const sortedAliases = command.aliases.slice().sort(
+			/**
+			 * @param {string} a
+			 * @param {string} b
+			 */
+			(a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })
+		);
+
 		player.sendMessage(`§aAliases§7: §f${sortedAliases.join(", ")}`);
 	}
 
@@ -277,12 +317,12 @@ export function helpCommand(player, args) {
 
 	if (usages.length === 0) {
 		player.sendMessage({
-			rawtext: [{ text: `  §e» §f${prefix}${command.name}` }],
+			rawtext: [{ text: `  §e» §f${prefix}${command.name}` }]
 		});
 	} else {
 		for (const usage of usages) {
 			player.sendMessage({
-				rawtext: [{ text: `  §e» §f${usage}` }],
+				rawtext: [{ text: `  §e» §f${usage}` }]
 			});
 		}
 	}
@@ -297,8 +337,8 @@ registerCommand({
 			type: "argument",
 			name: "query",
 			argType: "string",
-			run: helpCommand,
-		},
+			run: helpCommand
+		}
 	],
-	run: helpCommand,
+	run: helpCommand
 });
