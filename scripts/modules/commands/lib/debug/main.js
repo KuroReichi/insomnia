@@ -10,9 +10,10 @@ Interface.debug = {
 		dashboard(player) {
 			const v = new ActionFormData();
 			v.title("Database");
-			v.button();
+			v.button("");
 		}
 	},
+	/** @param {Player} player */
 	main: function (player) {
 		const v = new ActionFormData();
 		v.title("Debugging");

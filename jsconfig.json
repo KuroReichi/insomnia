@@ -1,7 +1,0 @@
-{
-	"compilerOptions": {
-		"checkJs": true,
-		"lib": ["ES2021"],
-		"types": ["@minecraft/server", "@minecraft/server-ui"]
-	}
-}

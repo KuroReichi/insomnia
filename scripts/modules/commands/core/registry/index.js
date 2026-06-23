@@ -1,4 +1,5 @@
 import { world, system, Player } from "@minecraft/server";
+import database from "../../../../core/database";
 
 /**
  * @callback CommandExecutor
@@ -366,19 +367,42 @@ function validateArgument(player, argument, value) {
 			);
 
 			if (!target) {
-				player.sendMessage({
-					rawtext: [
-						{ text: "§c" },
-						{
-							translate: "commands.generic.player.notFound"
-						}
-					]
-				});
+				if (database)
+					player.sendMessage({
+						rawtext: [
+							{ text: "§c" },
+							{
+								translate: "commands.generic.player.notFound"
+							}
+						]
+					});
 
 				return { success: false, error: "player" };
 			}
 
 			return { success: true, value: target };
+		}
+
+		case "playerName": {
+			/** @type {string[]} */
+			const registered = database.get("player.registered") ?? [];
+			const name = registered.find(p => p.toLowerCase() === value.toLowerCase());
+
+			if (!name) {
+				player.sendMessage({
+					rawtext: [{ text: "§cUnknown registered player." }]
+				});
+
+				return {
+					success: false,
+					error: "playerName"
+				};
+			}
+
+			return {
+				success: true,
+				value: name
+			};
 		}
 
 		case "enum":

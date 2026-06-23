@@ -1,0 +1,74 @@
+import { world } from "@minecraft/server";
+import { configs } from "../../../core/configs.js";
+import database from "../../../core/database.js";
+/**
+ * @typedef {{killerName:string,date:number}} DeathEntry
+ * @typedef {{isDeathRecently:boolean,data:DeathEntry,lastDeaths:DeathEntry[]}} DeathTrack
+ */
+
+world.afterEvents.playerSpawn.subscribe(event => {
+	const player = event.player;
+	if (event.initialSpawn) {
+		if (!database.get("date.first-join", player.name)) {
+			const list = /** @type {string[]} */ (database.get("player.registered"));
+			list.includes(player.name);
+
+			database.set({
+				list: [
+					{
+						name: "date.first-join",
+						value: new Date().valueOf()
+					},
+					{
+						name: "death.tracks",
+						value: {
+							isDeathRecently: false,
+							data: {
+								killerName: undefined,
+								date: undefined
+							},
+							lastDeaths: []
+						}
+					},
+					{
+						name: "money",
+						value: configs.modules.economy.default
+					},
+					{
+						name: "bounty",
+						value: 0
+					}
+				],
+				key: player.name,
+				options: {
+					overwrite: {
+						enabled: true,
+						type: "blacklist",
+						namespace: []
+					},
+					createIfMissing: true
+				}
+			});
+		} else {
+			player.sendMessage({
+				text: `§l§3> §r§bWelcome back to §7${configs.server.name}`
+			});
+		}
+	} else {
+		/** @type {DeathTrack | undefined} */
+		const track = /** @type {DeathTrack | undefined} */ (database.get("death.tracks", player.name));
+		if (track?.isDeathRecently) {
+			player.runCommand(`event entity ${player.name} miaw:hp_${Math.floor(Number(player.getComponent("minecraft:health")?.defaultValue) - 2)}`);
+			/** @type {DeathTrack} */
+			const track = /** @type {DeathTrack} */ (database.get("death.tracks", player.name));
+
+			track.isDeathRecently = false;
+			track.data = {
+				killerName: "",
+				date: 0
+			};
+
+			database.set("death.tracks", track, player.name);
+		}
+	}
+});

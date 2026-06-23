@@ -1,5 +1,5 @@
 import { world } from "@minecraft/server";
-import { CommandQueue } from "../commands/core/registry.js";
+import { CommandQueue } from "../commands/core/registry/index.js";
 import { configs } from "../../core/configs.js";
 import database from "../../core/database.js";
 
@@ -37,36 +37,16 @@ world.beforeEvents.chatSend.subscribe(async event => {
 			database.set("command-logs", logs);
 		});
 	} else {
-		const chatmode = database.get("chat-mode", event.sender.name);
-		switch (chatmode) {
-			default:
-				event.sender.sendMessage([
+		system.run(() => {
+			event.cancel = true;
+			event.sender.sendMessage({
+				rawtext: [
 					{
-						text: "§cChatMode"
-					},
-					{
-						translate: "worldError.notSupported"
+						text: "§c",
+						translate: "permissions.chatmute"
 					}
-				]);
-				break;
-		}
+				]
+			});
+		});
 	}
 });
-
-/**
- * @typedef {Object} Members
- * @property {string} name
- * @property {string} roles
- *
- * @typedef {Object} Familia
- * @property {string} uid				- Familia Unique ID
- * @property {string} logo				- Path Logo
- * @property {string} name				- Familia Name
- * @property {string} description		- Familia Description
- * @property {Array<Members>} members	- List Member(s) { name, roles }
- * @property {Array<FamilyColor>} color	- { primary, secondary }
- * @property {string[]} tags			- Family Tags
- * @property {number} power				-
- * @property {number} bank				-
- */
-/** @type {Familia} */
