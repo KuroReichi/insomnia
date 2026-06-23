@@ -30,7 +30,10 @@ export class Playtime {
 
 	/** @returns {number} */
 	get ticks() {
-		return database.get(`${PLAYTIME_ID}.ticks`, this.player.name) ?? 0;
+		return Math.floor(
+			/** @type {number} */
+			database.get(`${PLAYTIME_ID}.ticks`, this.player.name) ?? 0
+		);
 	}
 
 	/** @returns {number} */
@@ -116,7 +119,6 @@ export class Playtime {
 			if (!(key in values)) {
 				return match;
 			}
-
 			const value = String(values[key]);
 			return token.length === 1 ? value : value.padStart(token.length, "0");
 		});

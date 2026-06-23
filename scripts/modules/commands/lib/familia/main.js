@@ -1,5 +1,5 @@
 import { Player } from "@minecraft/server";
-import { registerCommand } from "../../core/registry";
+import { registerCommand } from "../../core/registry/index.js";
 import { helpCommand } from "../common/help.js";
 
 /**
@@ -367,8 +367,12 @@ export class Familia {
 	 * @returns {void}
 	 */
 	static help(player, context) {
-		const query = context.command ? `familia ${context.command}` : "familia";
-		helpCommand(player, { query });
+		if (!context.command) {
+			player.sendMessage({
+				text: "§c",
+				translate: "command"
+			});
+		}
 	}
 
 	/**

@@ -2,7 +2,7 @@
  *	@name metricNumber
  *	@param {number} value
  *	@param {number} decimals
- *	@returns {number}
+ *	@returns {string}
  **/
 export function metricNumber(value, decimals = 2) {
 	if (value === 0) return "0";

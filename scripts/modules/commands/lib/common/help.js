@@ -1,5 +1,5 @@
 import { Player } from "@minecraft/server";
-import { registerCommand, getCommands } from "../../core/registry";
+import { registerCommand, getCommands } from "../../core/registry/index.js";
 import { configs } from "../../../../core/configs.js";
 
 /**
@@ -245,7 +245,6 @@ export function helpCommand(player, args) {
 				) || [];
 
 			const aliasText = sortedAliases.length ? ` §2[§a${sortedAliases.join("§7, §a")}§2]§r` : "";
-
 			player.sendMessage(`  §2» §f${prefix}${cmd.name}${aliasText} §7- §f${cmd.description ?? "No description"}`);
 		}
 

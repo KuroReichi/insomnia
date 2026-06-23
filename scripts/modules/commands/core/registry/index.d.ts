@@ -9,7 +9,7 @@ export type CommandExecutor<TContext extends CommandContext = CommandContext> = 
 export interface CommandNode<TContext extends CommandContext = CommandContext> {
 	type: "literal" | "argument";
 	name: string;
-	argType?: "string" | "number" | "boolean" | "player" | "enum";
+	argType?: "string" | "number" | "boolean" | "player" | "playerName" | "enum";
 	values?: string[];
 
 	run?: CommandExecutor<TContext>;
