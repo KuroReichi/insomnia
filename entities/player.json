@@ -1,4 +1,5 @@
 {
+	"$schema": "https://raw.githubusercontent.com/Blockception/Minecraft-bedrock-json-schemas/refs/heads/main/behavior/entities/entities.json",
 	"format_version": "beta",
 	"minecraft:entity": {
 		"description": {
@@ -8,6 +9,9 @@
 			"spawn_category": "creature"
 		},
 		"components": {
+			"minecraft:health": {
+				"max": 20
+			},
 			"minecraft:attack": {
 				"damage": 1
 			},
@@ -105,8 +109,8 @@
 				"value": 0
 			},
 			"minecraft:player.saturation": {
-				"max": 20,
-				"value": 5
+				"value": 5,
+				"max": 20
 			},
 			"minecraft:pushable_by_block": {},
 			"minecraft:apply_knockback_rules": {

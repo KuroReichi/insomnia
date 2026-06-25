@@ -10,13 +10,20 @@ world.afterEvents.playerSpawn.subscribe(event => {
 	const player = event.player;
 	if (event.initialSpawn) {
 		if (!database.get("date.first-join", player.name)) {
-			const list = /** @type {string[]} */ (database.get("player.registered"));
-			list.includes(player.name);
+			const list = /** @type {string[]} */ (database.get("player.registered") ?? []);
+			if (!list.includes(player.name)) {
+				list.push(player.name);
+				database.set("player.registered", list);
+			}
 
 			database.set({
 				list: [
 					{
 						name: "date.first-join",
+						value: new Date().valueOf()
+					},
+					{
+						name: "date.session",
 						value: new Date().valueOf()
 					},
 					{
@@ -43,8 +50,8 @@ world.afterEvents.playerSpawn.subscribe(event => {
 				options: {
 					overwrite: {
 						enabled: true,
-						type: "blacklist",
-						namespace: []
+						type: "whitelist",
+						namespace: ["date.session"]
 					},
 					createIfMissing: true
 				}

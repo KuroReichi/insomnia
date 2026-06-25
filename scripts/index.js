@@ -16,7 +16,19 @@ world.afterEvents.worldLoad.subscribe(() => {
 	system.runInterval(() => {
 		world.getAllPlayers().forEach(player => {
 			if (player.isValid) {
-				const bounty = /** @type {string} */ metricNumber(Math.floor(Number(database.get("money", player.name) / 70) + Number(database.get("bounty", player.name))));
+				/** @type {string} */
+				const bounty = /** @type {string} */ metricNumber(
+					Math.floor(
+						Number(
+							/** @type {number} */
+							database.get("money", player.name)
+						) / 70
+					) +
+						Number(
+							/** @type {number} */
+							database.get("bounty", player.name)
+						)
+				);
 				player.nameTag = [`§f${player.name} §8- §3${player.getPing}`, `§cBounty §e${configs.modules.economy.currency}${bounty}`].join("\n");
 			}
 		});
