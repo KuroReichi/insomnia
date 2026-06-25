@@ -1,6 +1,8 @@
 import { world, system } from "@minecraft/server";
+import { configs } from "../../../core/configs.js";
 import database from "./../../../core/database.js";
-const TIMEZONE = "Asia/Jakarta";
+
+const TIMEZONE = configs.modules.realtime.timezone;
 
 /**
  * @name getTimezoneLoc
@@ -44,7 +46,13 @@ function getDayPassed() {
 	return Math.max(Math.floor(diff / 86400000), 0);
 }
 
-system.runInterval(() => {
+export let runtime = system.runInterval(() => {
+	if (!configs.modules.realtime.enabled) {
+		system.clearRun(runtime);
+		world.gameRules.doDayLightCycle = true;
+		return;
+	}
+	if (world.gameRules.doDayLightCycle === true) world.gameRules.doDayLightCycle = false;
 	const ticks = getMinecraftTimeFromIRL();
 	const days = getDayPassed();
 

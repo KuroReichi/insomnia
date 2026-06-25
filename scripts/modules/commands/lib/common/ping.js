@@ -1,9 +1,17 @@
 import { Player } from "@minecraft/server";
 import { registerCommand } from "../../core/registry/index.js";
 
-/** @param {Player} player */
+/**
+ * @name Ping
+ * @description Display current ping to executor
+ * @param {Player} player
+ * @returns {void}
+ */
 function Ping(player) {
-	player.sendMessage(`§7Your Ping§8: §b${player.getPing()}`);
+	player.sendMessage({
+		text: `§7Your Ping§8: §b${player.getPing()}`
+	});
+	player.playSound("random.orb");
 }
 
 registerCommand({

@@ -1,11 +1,10 @@
+import { Player, world, ItemStack } from "@minecraft/server";
+import { configs } from "../../../core/configs";
+import database from "../../../core/database";
 /**
  * @typedef {{killerName:string,date:number}} DeathEntry
  * @typedef {{isDeathRecently:boolean,data:DeathEntry,lastDeaths:DeathEntry[]}} DeathTrack
  */
-
-import { Player, world, ItemStack } from "@minecraft/server";
-import { configs } from "../../../core/configs";
-import database from "../../../core/database";
 
 const currency = configs.modules.economy.currency;
 const bountyRate = 0.3;
