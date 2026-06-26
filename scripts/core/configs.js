@@ -1,4 +1,4 @@
-import * as DATA from "@minecraft/vanilla-data";
+import { MinecraftDimensionTypes } from "@minecraft/vanilla-data";
 
 export const configs = {
 	commandPrefix: "!",
@@ -14,18 +14,29 @@ export const configs = {
 			enabled: true,
 			timezone: "Asia/Jakarta"
 		},
-		// ! CUMA WORK DI AWAL worldLoad !
-		// ! ONLY WORK AT FIRST WORLD LOAD EVENT !
 		regionProtect: [
 			{
-				/** @type {{x:number,y:number,z:number}|"spawn"} */
-				location: "spawn",
-				dimension: DATA.MinecraftDimensionTypes.Overworld,
+				/** @type {MinecraftDimensionTypes} */
+				dimension: MinecraftDimensionTypes.Overworld,
 				data: {
+					/** @type {"point"|"radius"} */
 					type: "radius",
-					value: "500",
+					/** @type {string|{center:Vector2,radius:number}} */
+					value: {
+						center: "spawn",
+						radius: 500
+					},
+					/** Controls permissions of player interaction */
 					permission: {
+						/**
+						 * @type {boolean}
+						 * Controls is player can attack any entities inside the region.
+						 */
 						pvp: false,
+						/**
+						 * @type {{break:boolean,place:boolean}}
+						 * Controls is player can break or place a block inside region.
+						 */
 						blocks: {
 							break: false,
 							place: false
@@ -34,6 +45,7 @@ export const configs = {
 							pickup: true,
 							drop: true
 						},
+						/** @description */
 						entities: {
 							animals: false,
 							monster: false

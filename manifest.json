@@ -1,4 +1,5 @@
 {
+	"$schema": "https://raw.githubusercontent.com/Blockception/Minecraft-bedrock-json-schemas/refs/heads/main/general/manifest.json",
 	"format_version": 2,
 	"header": {
 		"name": "Miaw's API Core",
