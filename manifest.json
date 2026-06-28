@@ -2,15 +2,20 @@
 	"$schema": "https://raw.githubusercontent.com/Blockception/Minecraft-bedrock-json-schemas/refs/heads/main/general/manifest.json",
 	"format_version": 2,
 	"header": {
-		"name": "Miaw's API Core",
+		"name": "Insomnia Core",
 		"description": "By KuroReichii (Private Use).",
 		"uuid": "1990a121-3ee2-4c1d-ba25-d8454911c4be",
 		"version": [1, 0, 0],
-		"min_engine_version": [1, 26, 3]
+		"min_engine_version": [1, 26, 30]
 	},
 	"metadata": {
 		"authors": ["KuroReichii"],
-		"url": "https://github.com/KuroReichi/"
+		"url": "https://github.com/KuroReichi/",
+		"license": "Apache 2.0",
+		"product_type": "addon",
+		"generated_with": {
+			"Acode": "v1.12.6"
+		}
 	},
 	"modules": [
 		{
@@ -19,9 +24,9 @@
 			"version": [1, 0, 0]
 		},
 		{
-			"uuid": "239c134f-67bf-4738-9bcc-8c69d31b1f72",
-			"version": [1, 2, 1],
 			"type": "script",
+			"uuid": "239c134f-67bf-4738-9bcc-8c69d31b1f72",
+			"version": [1, 0, 0],
 			"language": "javascript",
 			"entry": "scripts/index.js"
 		}
