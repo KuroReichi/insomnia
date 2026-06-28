@@ -1,0 +1,212 @@
+import {
+	MinecraftBlockTypes,
+	MinecraftDimensionTypes,
+	MinecraftEntityTypes,
+	MinecraftItemTypes
+} from "@minecraft/vanilla-data";
+
+const Block = MinecraftBlockTypes;
+const Entity = MinecraftEntityTypes;
+const Item = MinecraftItemTypes;
+
+/**
+ * @typedef {Object} RegionTargetFilter
+ * @property {"blacklist" | "whitelist"} type
+ * @property {string[]} list
+ */
+
+/**
+ * @typedef {Object} RegionBypass
+ * @property {boolean} operator
+ * @property {string[]} tags
+ * @property {string[]} gamertags
+ */
+
+/**
+ * @typedef {Object} RegionBlockPermission
+ * @property {boolean} break
+ * @property {boolean} place
+ * @property {RegionTargetFilter} interact
+ */
+
+/**
+ * @typedef {Object} RegionEntitySpawnPermission
+ * @property {boolean} animals
+ * @property {boolean} monster
+ */
+
+/**
+ * @typedef {Object} RegionEntityPermission
+ * @property {RegionEntitySpawnPermission} spawn
+ * @property {RegionTargetFilter} interact
+ */
+
+/**
+ * @typedef {Object} RegionItemPermission
+ * @property {boolean} pickup
+ * @property {boolean} drop
+ * @property {RegionTargetFilter} interact
+ */
+
+/**
+ * @typedef {Object} RegionPermission
+ * @property {boolean} pvp
+ * @property {boolean} explosion
+ * @property {RegionBlockPermission} blocks
+ * @property {RegionEntityPermission} entities
+ * @property {RegionItemPermission} items
+ */
+
+/**
+ * @typedef {Object} RegionRadiusCenterCoordinates
+ * @property {number} x
+ * @property {number} z
+ */
+
+/**
+ * @typedef {Object} RegionRadiusValue
+ * @property {"spawn" | RegionRadiusCenterCoordinates} center
+ * @property {number} radius
+ */
+
+/**
+ * @typedef {Object} RegionPointValue
+ * @property {{x:number, y:number, z:number}} point
+ */
+
+/**
+ * @typedef {Object} RegionData
+ * @property {string} id
+ * @property {boolean} [enabled]
+ * @property {number} [priority]
+ * @property {RegionBypass} bypass
+ * @property {"point" | "radius"} type
+ * @property {RegionRadiusValue | RegionPointValue} value
+ * @property {RegionPermission} permission
+ */
+
+/**
+ * @typedef {Object} RegionProtectConfig
+ * @property {string} dimension
+ * @property {RegionData} data
+ */
+
+/**
+ * @typedef {Object} AppConfigs
+ * @property {string} commandPrefix
+ * @property {{
+ *   name: string,
+ *   subname: string | undefined,
+ *   founder: string,
+ *   license: string,
+ *   production: string
+ * }} server
+ * @property {{
+ *   realtime: { enabled: boolean, timezone: string },
+ *   regionProtect: RegionProtectConfig[],
+ *   economy: { currency: string, default: number },
+ *   bounty: { min: number }
+ * }} modules
+ */
+
+/**
+ * @type {AppConfigs}
+ */
+export const configs = {
+	commandPrefix: "!",
+	server: {
+		name: "Insomnia Lifesteal",
+		subname: undefined,
+		founder: "KuroReichii",
+		license: "MIT",
+		production: "Legiun Studio"
+	},
+	modules: {
+		realtime: {
+			enabled: true,
+			timezone: "Asia/Jakarta"
+		},
+		regionProtect: [
+			{
+				dimension: MinecraftDimensionTypes.Overworld,
+				data: {
+					id: "insomnia.spawn",
+					enabled: true,
+					priority: 100,
+					bypass: {
+						operator: false,
+						/** @type {string[]} */ tags: [],
+						gamertags: [
+							"OscarJofaXD",
+							"KuroReichii",
+							"HikariKurumi"
+						]
+					},
+					type: "radius",
+					value: {
+						center: "spawn",
+						radius: 500
+					},
+					permission: {
+						pvp: false,
+						explosion: false,
+						blocks: {
+							break: false,
+							place: false,
+							interact: {
+								type: "blacklist",
+								list: [
+									Block.Barrel,
+									Block.Chest,
+									Block.Hopper,
+									Block.TrappedChest,
+									Block.Furnace,
+									Block.Anvil
+								]
+							}
+						},
+						entities: {
+							spawn: {
+								animals: false,
+								monster: false
+							},
+							interact: {
+								type: "blacklist",
+								list: [
+									Entity.ChestMinecart,
+									Entity.HopperMinecart,
+									Entity.Villager,
+									Entity.ArmorStand,
+									Entity.Boat,
+									Entity.Minecart
+								]
+							}
+						},
+						items: {
+							pickup: false,
+							drop: false,
+							interact: {
+								type: "blacklist",
+								list: [
+									Item.EnderPearl,
+									Item.FireworkRocket,
+									Item.Bucket,
+									Item.WaterBucket,
+									Item.LavaBucket,
+									Item.Egg
+								]
+							}
+						}
+					}
+				}
+			}
+		],
+		economy: {
+			currency: "$",
+			default: 10000
+		},
+		bounty: {
+			min: 1000
+		}
+	}
+};
