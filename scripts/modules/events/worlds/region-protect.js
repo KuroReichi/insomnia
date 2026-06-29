@@ -1,8 +1,4 @@
 import { world, PlayerPermissionLevel } from "@minecraft/server";
-import {
-	MinecraftDimensionTypes,
-	MinecraftEntityTypes
-} from "@minecraft/vanilla-data";
 import { configs } from "../../../core/configs.js";
 import database from "../../../core/database.js";
 
@@ -119,9 +115,9 @@ const regionConfigs = Array.isArray(configs?.modules?.regionProtect)
 
 /** @type {Record<string, CompiledRegion[]>} */
 const dimensionRegions = {
-	[MinecraftDimensionTypes.Overworld]: [],
-	[MinecraftDimensionTypes.Nether]: [],
-	[MinecraftDimensionTypes.TheEnd]: []
+	"minecraft:overworld": [],
+	"minecraft:nether": [],
+	"minecraft:the_end": []
 };
 
 let booted = false;
@@ -133,17 +129,15 @@ let booted = false;
 const str = value => String(value ?? "").trim();
 
 /**
- * Digunakan untuk fallback jika configs memiliki id dimensi kustom,
- * dan memastikan penulisan identik dengan vanilla-data.
+ * Normalisasi id dimensi murni string menghindari ReferenceError
  * @param {string} value
  * @returns {string}
  */
 const normalizeDimensionId = value => {
 	const raw = str(value).toLowerCase();
-	if (raw.includes("nether")) return MinecraftDimensionTypes.Nether;
-	if (raw.includes("end")) return MinecraftDimensionTypes.TheEnd;
-	if (!raw || raw.includes("overworld"))
-		return MinecraftDimensionTypes.Overworld;
+	if (raw.includes("nether")) return "minecraft:nether";
+	if (raw.includes("end")) return "minecraft:the_end";
+	if (!raw || raw.includes("overworld")) return "minecraft:overworld";
 	return raw;
 };
 
@@ -155,13 +149,13 @@ const normalizeDimensionId = value => {
 const hasBypass = (entity, bypass) => {
 	if (!entity || !bypass) return false;
 
-	// Integrasi dengan namespace "@minecraft/vanilla-data"
-	if (entity.typeId !== MinecraftEntityTypes.Player) return false;
+	// String murni, 100% aman tanpa butuh @minecraft/vanilla-data
+	if (entity.typeId !== "minecraft:player") return false;
 
-	// Casting eksplisit ke Player API
+	// Casting eksplisit
 	const player = /** @type {Player} */ (/** @type {unknown} */ (entity));
 
-	// Membaca property `playerPermissionLevel` seperti dokumentasi Bedrock Scripting modern
+	// Membaca property `playerPermissionLevel` sesuai instruksi MS Docs
 	if (
 		bypass.operator &&
 		(player.playerPermissionLevel === PlayerPermissionLevel.Operator ||
@@ -170,11 +164,19 @@ const hasBypass = (entity, bypass) => {
 		return true;
 	}
 
-	if (bypass.gamertags.length > 0 && bypass.gamertags.includes(player.name)) {
+	if (
+		Array.isArray(bypass.gamertags) &&
+		bypass.gamertags.length > 0 &&
+		bypass.gamertags.includes(player.name)
+	) {
 		return true;
 	}
 
-	if (bypass.tags.length > 0 && bypass.tags.some(tag => player.hasTag(tag))) {
+	if (
+		Array.isArray(bypass.tags) &&
+		bypass.tags.length > 0 &&
+		bypass.tags.some(tag => player.hasTag(tag))
+	) {
 		return true;
 	}
 
@@ -280,7 +282,6 @@ const compileRegion = config => {
 const regionContains = (region, location) => {
 	if (!region.enabled) return false;
 
-	// Evaluasi titik 3D murni menggunakan native JS (Lebih ringan & independen tanpa module)
 	if (region.type === "point" && region.point) {
 		return (
 			Math.floor(location.x) === Math.floor(region.point.x) &&
@@ -289,7 +290,6 @@ const regionContains = (region, location) => {
 		);
 	}
 
-	// Evaluasi silindris radius 2D murni (Native pythagoras)
 	if (
 		region.type === "radius" &&
 		region.center &&
@@ -455,8 +455,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 		const damagingEntity = damageSource?.damagingEntity;
 
 		if (
-			hurtEntity?.typeId !== MinecraftEntityTypes.Player ||
-			damagingEntity?.typeId !== MinecraftEntityTypes.Player
+			hurtEntity?.typeId !== "minecraft:player" ||
+			damagingEntity?.typeId !== "minecraft:player"
 		)
 			return;
 
@@ -509,7 +509,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 
 	world.afterEvents.entitySpawn?.subscribe(event => {
 		const { entity } = event;
-		if (!entity || entity.typeId === MinecraftEntityTypes.Player) return;
+		// Menggunakan murni String Vanilla agar tidak butuh import vanilla-data
+		if (!entity || entity.typeId === "minecraft:player") return;
 
 		const region = getBestRegion(entity.location, entity.dimension.id);
 		if (!region) return;

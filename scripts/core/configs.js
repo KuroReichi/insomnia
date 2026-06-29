@@ -1,14 +1,3 @@
-import {
-	MinecraftBlockTypes,
-	MinecraftDimensionTypes,
-	MinecraftEntityTypes,
-	MinecraftItemTypes
-} from "@minecraft/vanilla-data";
-
-const Block = MinecraftBlockTypes;
-const Entity = MinecraftEntityTypes;
-const Item = MinecraftItemTypes;
-
 /**
  * @typedef {Object} RegionTargetFilter
  * @property {"blacklist" | "whitelist"} type
@@ -128,14 +117,14 @@ export const configs = {
 		},
 		regionProtect: [
 			{
-				dimension: MinecraftDimensionTypes.Overworld,
+				dimension: "minecraft:overworld",
 				data: {
 					id: "insomnia.spawn",
 					enabled: true,
 					priority: 100,
 					bypass: {
 						operator: false,
-						/** @type {string[]} */ tags: [],
+						tags: [],
 						gamertags: [
 							"OscarJofaXD",
 							"KuroReichii",
@@ -154,14 +143,10 @@ export const configs = {
 							break: false,
 							place: false,
 							interact: {
-								type: "blacklist",
+								type: "whitelist",
 								list: [
-									Block.Barrel,
-									Block.Chest,
-									Block.Hopper,
-									Block.TrappedChest,
-									Block.Furnace,
-									Block.Anvil
+									"minecraft:ender_chest",
+									"minecraft:enchanting_table"
 								]
 							}
 						},
@@ -171,30 +156,16 @@ export const configs = {
 								monster: false
 							},
 							interact: {
-								type: "blacklist",
-								list: [
-									Entity.ChestMinecart,
-									Entity.HopperMinecart,
-									Entity.Villager,
-									Entity.ArmorStand,
-									Entity.Boat,
-									Entity.Minecart
-								]
+								type: "whitelist",
+								list: ["minecraft:npc"]
 							}
 						},
 						items: {
 							pickup: false,
 							drop: false,
 							interact: {
-								type: "blacklist",
-								list: [
-									Item.EnderPearl,
-									Item.FireworkRocket,
-									Item.Bucket,
-									Item.WaterBucket,
-									Item.LavaBucket,
-									Item.Egg
-								]
+								type: "whitelist",
+								list: ["minecraft:ender_pearl"]
 							}
 						}
 					}
