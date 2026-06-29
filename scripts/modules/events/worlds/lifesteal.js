@@ -56,10 +56,15 @@ world.afterEvents.entityDie.subscribe(
 		const now = Date.now();
 		const track = getTrack(player.name);
 		const lastDeath = track.lastDeaths[track.lastDeaths.length - 1];
-		const sameKillerRecently = !!lastDeath && lastDeath.killerName === atk.name && now - lastDeath.date < bountyCooldown;
+		const sameKillerRecently =
+			!!lastDeath &&
+			lastDeath.killerName === atk.name &&
+			now - lastDeath.date < bountyCooldown;
 
 		const moneyBeforeDeath = Math.max(0, Math.floor(getMoney(player.name)));
-		const bountyPool = sameKillerRecently ? 0 : Math.floor(moneyBeforeDeath * bountyRate);
+		const bountyPool = sameKillerRecently
+			? 0
+			: Math.floor(moneyBeforeDeath * bountyRate);
 		const deathPenalty = Math.floor(moneyBeforeDeath * deathPenaltyRate);
 
 		if (bountyPool > 0) {
@@ -101,7 +106,13 @@ world.afterEvents.entityDie.subscribe(
 			]
 		});
 
-		world.getAllPlayers().forEach(listener => listener.dimension.runCommand(`playsound ambient.weather.thunder ${player.name}`));
+		world
+			.getAllPlayers()
+			.forEach(listener =>
+				listener.dimension.runCommand(
+					`playsound ambient.weather.thunder ${player.name}`
+				)
+			);
 
 		const formatDate = (date = new Date()) =>
 			new Intl.DateTimeFormat("en-GB", {
@@ -113,7 +124,10 @@ world.afterEvents.entityDie.subscribe(
 
 		const heart = new ItemStack("miaw:heart", 1);
 		heart.nameTag = `§r§u${player.name} §dHeart§f'§ds§r`;
-		heart.setLore([{ text: `§r§6Obtained at §e${formatDate()}§f\n` }, { text: `  §r§9× §3by §b${atk.name}§f` }]);
+		heart.setLore([
+			{ text: `§r§6Obtained at §e${formatDate()}§f\n` },
+			{ text: `  §r§9× §3by §b${atk.name}§f` }
+		]);
 	},
 	{
 		entityTypes: ["minecraft:player"]
@@ -121,10 +135,18 @@ world.afterEvents.entityDie.subscribe(
 );
 
 world.afterEvents.itemUse.subscribe(event => {
-	if (event.itemStack.typeId !== "miaw:heart" || event.source.typeId !== "minecraft:player") return;
+	if (
+		event.itemStack.typeId !== "miaw:heart" ||
+		event.source.typeId !== "minecraft:player"
+	)
+		return;
 	const player = /** @type {Player} */ (event.source);
 
-	if (Math.floor(Number(player.getComponent("minecraft:health")?.defaultValue)) >= 40) {
+	if (
+		Math.floor(
+			Number(player.getComponent("minecraft:health")?.defaultValue)
+		) >= 40
+	) {
 		player.sendMessage({
 			text: "§l§6> §r§cYou reached max health limit!"
 		});
@@ -132,12 +154,25 @@ world.afterEvents.itemUse.subscribe(event => {
 		return;
 	}
 
-	player.runCommand(`event entity ${player.name} miaw:hp_${Math.floor(Number(player.getComponent("minecraft:health")?.defaultValue) + 2)}`);
-	event.itemStack.amount = event.itemStack.amount - 1;
-
+	player.runCommand(
+		`event entity ${player.name} miaw:hp_${Math.floor(Number(player.getComponent("minecraft:health")?.defaultValue) + 2)}`
+	);
+	const slot = player
+		.getComponent("minecraft:inventory")
+		.container.find(event.itemStack);
+	const data = Math.floor(event.itemStack.amount - 1);
+	player.getComponent("minecraft:inventory").container.setItem(slot, data);
 	player.sendMessage({
-		text: "§l§6> §r§cHealth §7increased to §e" + Math.floor(Number(player.getComponent("minecraft:health")?.defaultValue))
+		text:
+			"§l§6> §r§cHealth §7increased to §e" +
+			Math.floor(
+				Number(
+					player.getComponent("minecraft:health")?.defaultValue + 2
+				)
+			)
 	});
 
-	player.runCommand(`execute as @a at ${player.name} run playsound random.levelup @s ~~~`);
+	player.runCommand(
+		`execute as @a at ${player.name} run playsound random.levelup @s ~~~`
+	);
 });

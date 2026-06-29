@@ -69,7 +69,7 @@
 				"damage_conditions": [
 					{
 						"cause": "lava",
-						"damage_per_tick": 4,
+						"damage_per_tick": 2,
 						"filters": {
 							"operator": "==",
 							"test": "in_lava",
@@ -90,7 +90,7 @@
 				"value": 0.1
 			},
 			"minecraft:nameable": {
-				"allow_name_tag_renaming": false,
+				"allow_name_tag_renaming": true,
 				"always_show": true
 			},
 			"minecraft:physics": {
@@ -109,7 +109,7 @@
 				"value": 0
 			},
 			"minecraft:player.saturation": {
-				"value": 5,
+				"value": 20,
 				"max": 20
 			},
 			"minecraft:pushable_by_block": {},
@@ -580,7 +580,9 @@
 			},
 			"minecraft:clear_add_raid_omen": {
 				"add": {
-					"component_groups": ["minecraft:clear_raid_omen_spell_effect"]
+					"component_groups": [
+						"minecraft:clear_raid_omen_spell_effect"
+					]
 				},
 				"remove": {
 					"component_groups": ["minecraft:add_raid_omen"]
