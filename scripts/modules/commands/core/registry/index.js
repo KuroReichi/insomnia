@@ -73,6 +73,7 @@ import database from "../../../../core/database";
  * @property {false} success
  * @property {string} error
  * @property {string} [token]
+ * @property {number} [index]
  */
 
 /**
@@ -86,7 +87,7 @@ const commandMap = new Map();
 const rootCommands = new Map();
 
 /**
- * Tokenize command input and support:
+ * Tokenize command input and support quoted arguments.
  *
  * @param {string|string[]} input
  * @returns {string[]}
@@ -182,6 +183,90 @@ export function registerCommand(command) {
 }
 
 /**
+ * @param {Player} player
+ * @param {string[]} args
+ * @param {number} [index]
+ * @returns {void}
+ */
+function sendSyntaxError(player, args, index = Math.max(args.length - 1, 0)) {
+	const before = args.slice(0, index).join(" ");
+	const wrong = args[index] ?? "";
+	const after = args.slice(index + 1).join(" ");
+
+	player.sendMessage({
+		rawtext: [
+			{ text: "§c" },
+			{
+				translate: "commands.generic.syntax",
+				with: [before, wrong, after]
+			}
+		]
+	});
+}
+
+/**
+ * @param {Player} player
+ * @param {Command | CommandNode} node
+ * @param {string[]} args
+ * @param {number} index
+ * @param {CommandContext} context
+ * @returns {Promise<TraversalResult>}
+ */
+async function traverse(player, node, args, index, context) {
+	if (index >= args.length) {
+		if (node.run) {
+			await node.run(player, context);
+			return { success: true };
+		}
+
+		return {
+			success: false,
+			error: "syntax",
+			token: "",
+			index: Math.max(index - 1, 0)
+		};
+	}
+
+	const token = args[index].toLowerCase();
+
+	const literal = node.children?.find(
+		/**
+		 * @param {CommandNode} n
+		 */
+		n => n.type === "literal" && n.name === token
+	);
+
+	if (literal) {
+		return traverse(player, literal, args, index + 1, context);
+	}
+
+	const argument = node.children?.find(
+		/**
+		 * @param {CommandNode} n
+		 */
+		n => n.type === "argument"
+	);
+
+	if (argument) {
+		const parsed = validateArgument(player, argument, args[index]);
+
+		if (!parsed.success) {
+			return {
+				success: false,
+				error: parsed.error,
+				token: args[index],
+				index
+			};
+		}
+
+		context[argument.name] = parsed.value;
+		return traverse(player, argument, args, index + 1, context);
+	}
+
+	return { success: false, error: "syntax", token: args[index], index };
+}
+
+/**
  * Accepts either:
  * - raw command string: `fam create "Central Abyss"`
  * - token array: `["fam", "create", "Central Abyss"]`
@@ -240,16 +325,7 @@ export function CommandQueue(player, input) {
 			const success = await traverse(player, command, args, 1, {});
 
 			if (!success.success) {
-				player.sendMessage({
-					rawtext: [
-						{ text: "§c" },
-						{
-							translate: "commands.generic.syntax",
-							with: [`§7${args.join(" ")}§c`]
-						}
-					]
-				});
-
+				sendSyntaxError(player, args, success.index);
 				player.playSound("note.bass");
 
 				return resolve({
@@ -264,61 +340,6 @@ export function CommandQueue(player, input) {
 			});
 		}, 5);
 	});
-}
-
-/**
- * @param {Player} player
- * @param {Command | CommandNode} node
- * @param {string[]} args
- * @param {number} index
- * @param {CommandContext} context
- * @returns {Promise<TraversalResult>}
- */
-async function traverse(player, node, args, index, context) {
-	if (index >= args.length) {
-		if (node.run) {
-			await node.run(player, context);
-			return { success: true };
-		}
-
-		return { success: false, error: "syntax" };
-	}
-
-	const token = args[index].toLowerCase();
-
-	const literal = node.children?.find(
-		/**
-		 * @param {CommandNode} n
-		 */
-		n => n.type === "literal" && n.name === token
-	);
-
-	if (literal) {
-		return traverse(player, literal, args, index + 1, context);
-	}
-
-	const argument = node.children?.find(
-		/**
-		 * @param {CommandNode} n
-		 */
-		n => n.type === "argument"
-	);
-
-	if (argument) {
-		const parsed = validateArgument(player, argument, args[index]);
-
-		if (!parsed.success) {
-			return {
-				success: false,
-				error: parsed.error
-			};
-		}
-
-		context[argument.name] = parsed.value;
-		return traverse(player, argument, args, index + 1, context);
-	}
-
-	return { success: false, error: "syntax", token };
 }
 
 /**
@@ -367,15 +388,14 @@ function validateArgument(player, argument, value) {
 			);
 
 			if (!target) {
-				if (database)
-					player.sendMessage({
-						rawtext: [
-							{ text: "§c" },
-							{
-								translate: "commands.generic.player.notFound"
-							}
-						]
-					});
+				player.sendMessage({
+					rawtext: [
+						{ text: "§c" },
+						{
+							translate: "commands.generic.player.notFound"
+						}
+					]
+				});
 
 				return { success: false, error: "player" };
 			}
@@ -386,7 +406,12 @@ function validateArgument(player, argument, value) {
 		case "playerName": {
 			/** @type {string[]} */
 			const registered = database.get("player.registered") ?? [];
-			const name = registered.find(p => p.toLowerCase() === value.toLowerCase());
+			const name = registered.find(
+				/**
+				 * @param {string} p
+				 */
+				p => p.toLowerCase() === value.toLowerCase()
+			);
 
 			if (!name) {
 				player.sendMessage({

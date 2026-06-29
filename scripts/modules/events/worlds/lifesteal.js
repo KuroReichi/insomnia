@@ -140,13 +140,29 @@ world.afterEvents.itemUse.subscribe(event => {
 		event.source.typeId !== "minecraft:player"
 	)
 		return;
+
+	/** @type {Player} */
 	const player = /** @type {Player} */ (event.source);
 
-	if (
-		Math.floor(
-			Number(player.getComponent("minecraft:health")?.defaultValue)
-		) >= 40
-	) {
+	/** @type {import("@minecraft/server").EntityInventoryComponent} */
+	const inventory = /** @type {any} */ (
+		player.getComponent("minecraft:inventory")
+	);
+
+	/** @type {import("@minecraft/server").EntityHealthComponent} */
+	const health = /** @type {any} */ (player.getComponent("minecraft:health"));
+
+	/** @type {import("@minecraft/server").Container} */
+	const container = inventory.container;
+
+	const slot = /** @type {number} */ (container.find(event.itemStack));
+
+	/** @type {ItemStack} */
+	const item = event.itemStack.clone();
+	item.amount--;
+	container.setItem(slot, item);
+
+	if (Math.floor(health.defaultValue) >= 40) {
 		player.sendMessage({
 			text: "§l§6> §r§cYou reached max health limit!"
 		});
@@ -154,25 +170,14 @@ world.afterEvents.itemUse.subscribe(event => {
 		return;
 	}
 
-	player.runCommand(
-		`event entity ${player.name} miaw:hp_${Math.floor(Number(player.getComponent("minecraft:health")?.defaultValue) + 2)}`
-	);
-	const slot = player
-		.getComponent("minecraft:inventory")
-		.container.find(event.itemStack);
-	const data = Math.floor(event.itemStack.amount - 1);
-	player.getComponent("minecraft:inventory").container.setItem(slot, data);
+	const nextHealth = Math.floor(health.defaultValue + 2);
+
+	player.runCommand(`event entity "${player.name}" miaw:hp_${nextHealth}`);
 	player.sendMessage({
-		text:
-			"§l§6> §r§cHealth §7increased to §e" +
-			Math.floor(
-				Number(
-					player.getComponent("minecraft:health")?.defaultValue + 2
-				)
-			)
+		text: `§l§6> §r§cHealth §7increased to §e${nextHealth}`
 	});
 
 	player.runCommand(
-		`execute as @a at ${player.name} run playsound random.levelup @s ~~~`
+		`execute as "${player.name}" at @s run playsound random.levelup @s`
 	);
 });

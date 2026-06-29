@@ -11,10 +11,14 @@ import { metricNumber } from "../../../utility/metrics.js";
  * @typedef {{player:string}} Context
  */
 function Money(player, args) {
-	if (!args) {
-		player.sendMessage(`§l§2> §aYour money§8: §e${configs.modules.economy.currency}${metricNumber(Number(database.get("money", player.name)))}`);
+	if (!args.player) {
+		player.sendMessage(
+			`§l§2> §r§aYour money§8: §e${configs.modules.economy.currency}${metricNumber(Number(database.get("money", player.name)))}`
+		);
 	} else {
-		player.sendMessage(`§l§2> §a${args.player} money§8: §e${configs.modules.economy.currency}${metricNumber(Number(database.get("money", args.player)))}`);
+		player.sendMessage(
+			`§l§2> §r§a${args.player} money§8: §e${configs.modules.economy.currency}${metricNumber(Number(database.get("money", args.player)))}`
+		);
 	}
 }
 

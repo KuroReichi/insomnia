@@ -78,7 +78,7 @@ function lower(value) {
  * @returns {string}
  */
 function info(text) {
-	return `§a${text}`;
+	return `§a${text}§r`;
 }
 
 /**
@@ -86,7 +86,7 @@ function info(text) {
  * @returns {string}
  */
 function warn(text) {
-	return `§e${text}`;
+	return `§e${text}§r`;
 }
 
 /**
@@ -94,7 +94,7 @@ function warn(text) {
  * @returns {string}
  */
 function fail(text) {
-	return `§c${text}`;
+	return `§c${text}§r`;
 }
 
 /**
@@ -119,7 +119,12 @@ function getIndex() {
  */
 function getAllFamilias() {
 	return getIndex()
-		.map(uid => /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)))
+		.map(
+			uid =>
+				/** @type {FamiliaDataStore | undefined} */ (
+					database.get(uid, FAMILY_DB_KEY)
+				)
+		)
 		.filter(Boolean)
 		.map(family => /** @type {FamiliaDataStore} */ (family));
 }
@@ -153,7 +158,11 @@ function findFamilia(query) {
  * @returns {FamiliaPlayer}
  */
 function getPlayerState(player) {
-	return /** @type {FamiliaPlayer | undefined} */ (database.get("familia", player.name)) ?? { haveFamilia: false, data: null };
+	return (
+		/** @type {FamiliaPlayer | undefined} */ (
+			database.get("familia", player.name)
+		) ?? { haveFamilia: false, data: null }
+	);
 }
 
 /**
@@ -163,7 +172,11 @@ function getPlayerState(player) {
 function getPlayerFamily(player) {
 	const state = getPlayerState(player);
 	if (!state.haveFamilia || !state.data?.uid) return null;
-	return /** @type {FamiliaDataStore | undefined} */ (database.get(state.data.uid, FAMILY_DB_KEY)) ?? null;
+	return (
+		/** @type {FamiliaDataStore | undefined} */ (
+			database.get(state.data.uid, FAMILY_DB_KEY)
+		) ?? null
+	);
 }
 
 /**
@@ -187,10 +200,45 @@ function familyMemberText(family) {
  * @returns {string}
  */
 function familyRelationText(family) {
-	const allies = (family.relations ?? []).filter(relation => relation.type === "ally").length;
-	const enemies = (family.relations ?? []).filter(relation => relation.type === "enemy").length;
-	const neutrals = (family.relations ?? []).filter(relation => relation.type === "neutral").length;
+	const allies = (family.relations ?? []).filter(
+		relation => relation.type === "ally"
+	).length;
+	const enemies = (family.relations ?? []).filter(
+		relation => relation.type === "enemy"
+	).length;
+	const neutrals = (family.relations ?? []).filter(
+		relation => relation.type === "neutral"
+	).length;
 	return `${allies} ally, ${enemies} enemy, ${neutrals} neutral`;
+}
+
+/**
+ * @param {number | string | Date} value
+ * @param {string} [timezone="Asia/Jakarta"]
+ * @returns {string}
+ */
+function formatDate(value, timezone = "Asia/Jakarta") {
+	const date = new Date(value);
+
+	const parts = new Intl.DateTimeFormat("en-GB", {
+		timeZone: timezone,
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: false,
+		timeZoneName: "short"
+	}).formatToParts(date);
+
+	/** @type {Record<string, string>} */
+	const data = {};
+
+	for (const part of parts) {
+		data[part.type] = part.value;
+	}
+
+	return `${data.day}/${data.month}/${data.year}, ${data.hour}:${data.minute} ${data.timeZoneName}`;
 }
 
 /**
@@ -199,17 +247,17 @@ function familyRelationText(family) {
  */
 function buildInfoLines(family) {
 	return [
-		"§6§lFamilia Information",
-		`§eName: §f${family.name?.fullName ?? family.uid} §7[${family.name?.abbreviation ?? ""}]`,
-		`§eUID: §f${family.uid}`,
-		`§eFounder: §f${family.founder}`,
-		`§eOpen: §f${family.open ? "Yes" : "No"}`,
-		`§eCreated: §f${new Date(family.since).toLocaleString()}`,
-		`§eMembers: §f${familyMemberText(family)}`,
-		`§ePower: §f${familyPowerText(family)}`,
-		`§eRelations: §f${familyRelationText(family)}`,
-		`§eMOTD: §f${family.motd || "-"}`,
-		`§eDescription: §f${family.description || "-"}`
+		"§6Familia Information§r",
+		` §eName: §f${family.name?.fullName ?? family.uid} §7[${family.name?.abbreviation ?? ""}]`,
+		` §eUID: §f${family.uid}`,
+		` §eFounder: §f${family.founder}`,
+		` §§eRecruiting: §f${family.open ? "§aOpen" : "§cClosed"}`,
+		` §eCreated: §f${formatDate(family.since)}`,
+		` §eMembers: §f${familyMemberText(family)}`,
+		` §ePower: §f${familyPowerText(family)}`,
+		` §eRelations: §f${familyRelationText(family)}`,
+		` §eMOTD: §f${family.motd || "-"}`,
+		` §eDescription: §f${family.description || "-"}`
 	];
 }
 
@@ -226,7 +274,10 @@ export function showFamiliaInfo(player, context = {}) {
 	const family = query ? findFamilia(query) : getPlayerFamily(player);
 
 	if (!family) {
-		failNow(player, query ? "Familia not found." : "You are not in a Familia.");
+		failNow(
+			player,
+			query ? "Familia not found." : "You are not in a Familia."
+		);
 		return;
 	}
 
@@ -246,10 +297,12 @@ export function listFamilias(player) {
 		return;
 	}
 
-	const lines = ["§6§lFamilia List"];
+	const lines = ["§6§lFamilia List§r"];
 
 	for (const family of families.slice(0, 20)) {
-		lines.push(`§e- §f${family.name?.fullName ?? family.uid} §7[${family.name?.abbreviation ?? ""}] §8(${familyMemberText(family)} members, ${family.open ? "open" : "closed"})`);
+		lines.push(
+			`§e- §f${family.name?.fullName ?? family.uid} §7[${family.name?.abbreviation ?? ""}] §8(${familyMemberText(family)} members, ${family.open ? "open" : "closed"})`
+		);
 	}
 
 	if (families.length > 20) {
