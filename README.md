@@ -1,132 +1,81 @@
 # Insomnia Core
 
+Insomnia Core is a modular framework for Minecraft Bedrock Edition built on the Script API. It provides a scalable, event-driven architecture for building gameplay systems, managing player data, executing commands, and maintaining persistent storage through Minecraft Dynamic Properties.
+
+Designed with modularity in mind, every subsystem operates independently while remaining connected through a centralized runtime. This architecture makes the project easy to maintain, extend, and integrate with new features without affecting existing modules.
+
+## Architecture
+
+The runtime begins with `scripts/index.js`, which initializes the configuration system, establishes the database connection, and subscribes to Minecraft server events.
+
+Incoming events are dispatched to specialized modules responsible for gameplay mechanics, player tracking, and world management. Meanwhile, chat messages are processed through the command engine, where commands are parsed, validated, and executed before interacting with the database or configuration system.
+
+Every module communicates through a centralized persistence layer, allowing data such as player statistics, economy, guild information, and world states to remain synchronized throughout the server lifecycle.
+
+## Workflows
+
 ```mermaid
-flowchart TD
-	classDef root fill:#4F46E5,color:#fff,stroke:#312E81,stroke-width:2px
-	classDef folder fill:#2563EB,color:#fff
-	classDef module fill:#059669,color:#fff
-	classDef file fill:#374151,color:#fff
+graph TD
+    %% Core System
+    MC((Minecraft\nServer Events))
+    Index[scripts/index.js\nMain Entry Point]
+    DB[(core/database.js\nDynamic Properties)]
+    CFG[core/configs.js\nConfigurations]
 
-	A["📦 insomnia"]:::root
+    %% Load Core
+    Index -->|Initializes| CFG
+    Index -->|Reads/Writes| DB
+    Index -->|Subscribes| MC
 
-	A --> Manifest["manifest.json"]:::file
-	A --> Package["package.json"]:::file
-	A --> Readme["README.md"]:::file
-	A --> License["LICENSE"]:::file
-	A --> Icon["pack_icon.png"]:::file
+    %% Event Modules
+    subgraph Event_Modules [World & Event Handlers]
+        Evt_Spawn[Spawn Data\nPlayer Init & Death Tracks]
+        Evt_Region[Region Protect\nAnti-Grief, PVP, Block Filter]
+        Evt_Lifesteal[Lifesteal System\nBounty, Death Penalty, Hearts]
+        Evt_Time[Realtime Sync\nIRL Timezone to MC Ticks]
+    end
 
-	A --> Entities["entities"]:::folder
-	A --> Items["items"]:::folder
-	A --> Scripts["scripts"]:::folder
+    %% Data Trackers
+    subgraph Data_Trackers [Player Data Tracking]
+        Stat_Tracker[Statistics\nBreak, Place, KD, Damage]
+        Time_Tracker[Playtime Tracker\nTicks to Days/Hours]
+    end
 
-	Entities --> Player["player.json"]:::file
-	Items --> Heart["heart.json"]:::file
+    MC -->|spawn / die / interact| Event_Modules
+    MC -->|tick / events| Data_Trackers
 
-	Scripts --> Index["index.js"]:::module
-	Scripts --> Core["core"]:::folder
-	Scripts --> Modules["modules"]:::folder
+    Event_Modules -.->|Save Data| DB
+    Data_Trackers -.->|Store Stats| DB
+    Event_Modules -.->|Read Settings| CFG
 
-	Core --> Configs["configs.js"]:::file
-	Core --> Database["database.js"]:::file
+    %% Command Engine
+    subgraph Command_System [Command Architecture]
+        Chat[messages/chat.js\nChat Listener]
+        CmdRegistry{core/registry\nCommand Queue & Parser}
 
-	Modules --> Commands
-	Modules --> Events
-	Modules --> Messages
-	Modules --> PlayerData
-	Modules --> Utility
+        Cmd_Eco[Economy\nmoney, bounty]
+        Cmd_Fam[Familia System\ncreate, join, manage, etc.]
+        Cmd_Misc[Common / Utility\nping, help, debug]
+    end
 
-%% ===========================
-%% Commands
-%% ===========================
+    MC -->|beforeEvents.chatSend| Chat
+    Chat -->|Prefix Check & Parse| CmdRegistry
+    CmdRegistry -->|Execute| Cmd_Eco
+    CmdRegistry -->|Execute| Cmd_Fam
+    CmdRegistry -->|Execute| Cmd_Misc
 
-	Commands --> Registry
-	Commands --> CommandLib
-	Commands --> Loader["loader.js"]
+    Cmd_Eco -.->|Modify Economy| DB
+    Cmd_Fam -.->|Manage Guild Data| DB
+    Chat -.->|Read Prefix| CFG
 
-	Registry --> RegistryJS["index.js"]
-	Registry --> RegistryDTS["index.d.ts"]
-	Registry --> RegistryPkg["package.json"]
+    %% Styling
+    classDef core fill:#2d3436,stroke:#dfe6e9,stroke-width:2px,color:#fff;
+    classDef db fill:#0984e3,stroke:#74b9ff,stroke-width:2px,color:#fff;
+    classDef event fill:#00b894,stroke:#55efc4,stroke-width:2px,color:#fff;
+    classDef cmd fill:#d63031,stroke:#ff7675,stroke-width:2px,color:#fff;
 
-	CommandLib --> Common
-	CommandLib --> Debug
-	CommandLib --> Economy
-	CommandLib --> Familia
-
-	Common --> Help
-	Common --> Leaderboard
-	Common --> Ping
-
-	Debug --> DebugMain["main.js"]
-
-	Economy --> Money
-	Economy --> Bounty
-
-	Familia --> FamiliaMain["main.js"]
-	Familia --> FamiliaModules
-
-	FamiliaModules --> Create
-	FamiliaModules --> Join
-	FamiliaModules --> Leave
-	FamiliaModules --> Manage
-	FamiliaModules --> Relation
-	FamiliaModules --> Request
-	FamiliaModules --> Home
-	FamiliaModules --> Info
-	FamiliaModules --> Status
-	FamiliaModules --> FamiliaHelp["help.js"]
-
-%% ===========================
-%% Events
-%% ===========================
-
-	Events --> Worlds
-
-	Worlds --> Lifesteal
-	Worlds --> Realtime
-	Worlds --> RegionProtect
-	Worlds --> SpawnData
-
-%% ===========================
-%% Messages
-%% ===========================
-
-	Messages --> Chat["chat.js"]
-
-%% ===========================
-%% Player
-%% ===========================
-
-	PlayerData --> Data
-	PlayerData --> Interface
-
-	Data --> Playtime
-	Data --> Statistics
-
-	Interface --> Profile
-
-%% ===========================
-%% Utility
-%% ===========================
-
-	Utility --> Metrics
-
-%% ===========================
-%% Runtime Flow
-%% ===========================
-
-	Index -.imports.-> Configs
-	Index -.imports.-> Database
-	Index -.loads.-> Commands
-	Index -.loads.-> Events
-	Index -.loads.-> Messages
-	Index -.loads.-> PlayerData
-	Index -.loads.-> Utility
-
-	Commands -.registers.-> Registry
-	Registry -.loads.-> CommandLib
-
-	Events -.updates.-> Database
-	PlayerData -.stores.-> Database
-	Messages -.reads.-> Configs
-	Utility -.collects.-> Metrics
+    class Index,CFG core;
+    class DB db;
+    class Evt_Spawn,Evt_Region,Evt_Lifesteal,Evt_Time,Stat_Tracker,Time_Tracker event;
+    class Chat,CmdRegistry,Cmd_Eco,Cmd_Fam,Cmd_Misc cmd;
 ```
