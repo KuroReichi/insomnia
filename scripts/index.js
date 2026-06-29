@@ -1,3 +1,4 @@
+import "./modules/events/economy/main.js";
 import "./modules/events/familia/main.js";
 import "./modules/events/worlds/spawn-data.js";
 import "./modules/events/worlds/region-protect.js";
