@@ -3,10 +3,10 @@ import { configs } from "./core/configs.js";
 import { metricNumber } from "./modules/utility/metrics.js";
 import database from "./core/database.js";
 
-import "./modules/events/world/spawn-data.js";
-import "./modules/events/world/spawn-protect.js";
-import "./modules/events/world/lifesteal.js";
-import "./modules/events/world/realtime.js";
+import "./modules/events/worlds/spawn-data.js";
+import "./modules/events/worlds/region-protect.js";
+import "./modules/events/worlds/lifesteal.js";
+import "./modules/events/worlds/realtime.js";
 import "./modules/messages/chat.js";
 import "./modules/player/data/playtime.js";
 import "./modules/player/data/statistics.js";
@@ -29,7 +29,10 @@ world.afterEvents.worldLoad.subscribe(() => {
 							database.get("bounty", player.name)
 						)
 				);
-				player.nameTag = [`§f${player.name} §8- §3${player.getPing}`, `§cBounty §e${configs.modules.economy.currency}${bounty}`].join("\n");
+				player.nameTag = [
+					`§f${player.name} §8- §3${player.getPing}`,
+					`§cBounty §e${configs.modules.economy.currency}${bounty}`
+				].join("\n");
 			}
 		});
 	}, 1);
