@@ -128,6 +128,10 @@ world.afterEvents.entityDie.subscribe(
 			{ text: `§r§6Obtained at §e${formatDate()}§f\n` },
 			{ text: `  §r§9× §3by §b${atk.name}§f` }
 		]);
+
+		world
+			.getDimension(player.dimension.id)
+			.spawnItem(heart, player.location);
 	},
 	{
 		entityTypes: ["minecraft:player"]
@@ -178,6 +182,6 @@ world.afterEvents.itemUse.subscribe(event => {
 	});
 
 	player.runCommand(
-		`execute as "${player.name}" at @s run playsound random.levelup @s`
+		`execute as "${player.name}" at @s run playsound random.levelup @a ~~~`
 	);
 });
