@@ -30,7 +30,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 						)
 				);
 				player.nameTag = [
-					`§f${player.name} §8- §3${player.getPing}`,
+					`${database.get("familia", player.name) ? "" : ""}§f${player.name} §8- §3${player.getPing}`,
 					`§cBounty §e${configs.modules.economy.currency}${bounty}`
 				].join("\n");
 			}
