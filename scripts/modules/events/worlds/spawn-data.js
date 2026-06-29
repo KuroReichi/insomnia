@@ -10,12 +10,16 @@ world.afterEvents.playerSpawn.subscribe(event => {
 	const player = event.player;
 	if (event.initialSpawn) {
 		if (!database.get("date.first-join", player.name)) {
-			const list = /** @type {string[]} */ (database.get("player.registered") ?? []);
+			const list = /** @type {string[]} */ (
+				database.get("player.registered") ?? []
+			);
 			if (!list.includes(player.name)) {
 				list.push(player.name);
 				database.set("player.registered", list);
 			}
-
+			world.sendMessage({
+				text: `§l§2> §r§aWelcome §7${player.name} §ato §6${configs.server.name}§e!§r`
+			});
 			database.set({
 				list: [
 					{
@@ -63,11 +67,17 @@ world.afterEvents.playerSpawn.subscribe(event => {
 		}
 	} else {
 		/** @type {DeathTrack | undefined} */
-		const track = /** @type {DeathTrack | undefined} */ (database.get("death.tracks", player.name));
+		const track = /** @type {DeathTrack | undefined} */ (
+			database.get("death.tracks", player.name)
+		);
 		if (track?.isDeathRecently) {
-			player.runCommand(`event entity ${player.name} miaw:hp_${Math.floor(Number(player.getComponent("minecraft:health")?.defaultValue) - 2)}`);
+			player.runCommand(
+				`event entity ${player.name} miaw:hp_${Math.floor(Number(player.getComponent("minecraft:health")?.defaultValue) - 2)}`
+			);
 			/** @type {DeathTrack} */
-			const track = /** @type {DeathTrack} */ (database.get("death.tracks", player.name));
+			const track = /** @type {DeathTrack} */ (
+				database.get("death.tracks", player.name)
+			);
 
 			track.isDeathRecently = false;
 			track.data = {

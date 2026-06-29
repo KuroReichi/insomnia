@@ -1,4 +1,5 @@
 {
+	"$schema": "https://raw.githubusercontent.com/Blockception/Minecraft-bedrock-json-schemas/refs/heads/main/behavior/items/items.json",
 	"format_version": "1.26.30",
 	"minecraft:item": {
 		"description": {

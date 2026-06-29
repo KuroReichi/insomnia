@@ -1,5 +1,5 @@
 import { Player } from "@minecraft/server";
-import { registerCommand } from "../../core/registry/index.js";
+import { registerCommand } from "../../core//registry/index.js";
 
 /**
  * @name Ping

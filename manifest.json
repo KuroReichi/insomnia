@@ -6,7 +6,7 @@
 		"description": "By KuroReichii",
 		"uuid": "1990a121-3ee2-4c1d-ba25-d8454911c4be",
 		"version": [1, 0, 1],
-		"min_engine_version": [1, 26, 30]
+		"min_engine_version": [1, 26, 32]
 	},
 	"metadata": {
 		"authors": ["KuroReichii"],

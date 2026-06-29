@@ -1,6 +1,8 @@
+/** @type {string[]} */
 const modules = [
-	// Path Module(s)
+	"./lib/debug/main.js",
 	"./lib/common/help.js",
+	"./lib/common/playtime.js",
 	"./lib/common/ping.js",
 	"./lib/economy/bounty.js",
 	"./lib/economy/money.js",

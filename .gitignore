@@ -1,4 +1,5 @@
-*.gitignore
+*.prettierrc
+tsconfig.json
 clone
 code
 main
