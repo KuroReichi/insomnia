@@ -12,10 +12,7 @@
 		"authors": ["KuroReichii"],
 		"url": "https://github.com/KuroReichi/",
 		"license": "Apache 2.0",
-		"product_type": "addon",
-		"generated_with": {
-			"Acode": "v1.12.6"
-		}
+		"product_type": "addon"
 	},
 	"modules": [
 		{
