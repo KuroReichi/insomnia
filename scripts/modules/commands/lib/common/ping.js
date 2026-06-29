@@ -9,7 +9,7 @@ import { registerCommand } from "../../core/registry/index.js";
  */
 function Ping(player) {
 	player.sendMessage({
-		text: `§7Your Ping§8: §b${player.getPing()}`
+		text: `§l§3> §r§fYour Ping§8: §b${player.getPing()}`
 	});
 	player.playSound("random.orb");
 }

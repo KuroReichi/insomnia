@@ -47,7 +47,7 @@ import { getCommands } from "../../../core/registry/index.js";
  */
 
 const prefix = configs.commandPrefix;
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 14;
 const MIN_SUGGESTION_SCORE = 6;
 
 /**
@@ -64,7 +64,13 @@ function highlightMatch(text, query) {
 		return text;
 	}
 
-	return text.slice(0, index) + "§e" + text.slice(index, index + query.length) + "§r§f" + text.slice(index + query.length);
+	return (
+		text.slice(0, index) +
+		"§e" +
+		text.slice(index, index + query.length) +
+		"§r§f" +
+		text.slice(index + query.length)
+	);
 }
 
 /**
@@ -158,7 +164,12 @@ function buildUsages(node, path = []) {
 		}
 
 		if (child.type === "argument") {
-			usages.push(...buildUsages(child, [...path, `<${child.name}:${child.argType ?? "string"}>`]));
+			usages.push(
+				...buildUsages(child, [
+					...path,
+					`<${child.name}:${child.argType ?? "string"}>`
+				])
+			);
 		}
 	}
 
@@ -187,7 +198,11 @@ function findNode(node, name) {
  * @returns {Command | null}
  */
 function getFamiliaRoot() {
-	return getCommands().find(command => command.name.toLowerCase() === "familia") ?? null;
+	return (
+		getCommands().find(
+			command => command.name.toLowerCase() === "familia"
+		) ?? null
+	);
 }
 
 /**
@@ -246,7 +261,10 @@ export function helpFamilia(player, args = {}) {
 		const start = (page - 1) * PAGE_SIZE;
 		const list = usages.slice(start, start + PAGE_SIZE);
 
-		sendLine(player, `§2--- §aShowing Familia usage page §7${page} §aof §7${totalPages} §2---§r`);
+		sendLine(
+			player,
+			`§2--- §aShowing Familia usage page §7${page} §aof §7${totalPages} §2---§r`
+		);
 
 		if (list.length === 0) {
 			sendLine(player, `§7No usage found for §f${prefix}${root.name}§7.`);
@@ -258,10 +276,16 @@ export function helpFamilia(player, args = {}) {
 		}
 
 		if (totalPages > 1) {
-			sendLine(player, `§7Use ${prefix}familia help <page:int> to navigate pages`);
+			sendLine(
+				player,
+				`§7Use ${prefix}familia help <page:int> to navigate pages`
+			);
 		}
 
-		sendLine(player, `§7Use ${prefix}familia help <commandName:string> for a specific command`);
+		sendLine(
+			player,
+			`§7Use ${prefix}familia help <commandName:string> for a specific command`
+		);
 		return;
 	}
 
@@ -278,7 +302,10 @@ export function helpFamilia(player, args = {}) {
 				 */
 				node => ({
 					name: node.name,
-					aliases: node.values?.filter(value => typeof value === "string") ?? [],
+					aliases:
+						node.values?.filter(
+							value => typeof value === "string"
+						) ?? [],
 					children: node.children,
 					run: node.run
 				})
@@ -294,19 +321,31 @@ export function helpFamilia(player, args = {}) {
 			sendLine(player, `§8Showing ${suggestions.length} suggestion(s)`);
 
 			for (const suggestion of suggestions) {
-				sendLine(player, `  §e» §f${prefix}${root.name} ${highlightMatch(suggestion.name, query)}`);
+				sendLine(
+					player,
+					`  §e» §f${prefix}${root.name} ${highlightMatch(suggestion.name, query)}`
+				);
 			}
 		}
 
 		return;
 	}
 
-	const usages = buildUsages(match, [`${prefix}${root.name}`, ...(match === root ? [] : [match.name])]);
+	const usages = buildUsages(match, [
+		`${prefix}${root.name}`,
+		...(match === root ? [] : [match.name])
+	]);
 
-	sendLine(player, `§2--- §aUsages for §f${prefix}${root.name}${match === root ? "" : ` ${match.name}`} §2---`);
+	sendLine(
+		player,
+		`§2--- §aUsages for §f${prefix}${root.name}${match === root ? "" : ` ${match.name}`} §2---`
+	);
 
 	if (usages.length === 0) {
-		sendLine(player, `  §e» §f${prefix}${root.name}${match === root ? "" : ` ${match.name}`}`);
+		sendLine(
+			player,
+			`  §e» §f${prefix}${root.name}${match === root ? "" : ` ${match.name}`}`
+		);
 		return;
 	}
 

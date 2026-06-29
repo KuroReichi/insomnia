@@ -125,11 +125,7 @@ export const configs = {
 					bypass: {
 						operator: false,
 						tags: [],
-						gamertags: [
-							"OscarJofaXD",
-							"KuroReichii",
-							"HikariKurumi"
-						]
+						gamertags: ["KuroReichii", "HikariKurumi"]
 					},
 					type: "radius",
 					value: {

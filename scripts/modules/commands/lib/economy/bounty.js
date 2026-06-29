@@ -3,6 +3,7 @@ import { registerCommand } from "../../core/registry/index.js";
 import { configs } from "../../../../core/configs.js";
 import database from "../../../../core/database.js";
 import { metricNumber } from "../../../utility/metrics.js";
+import { helpCommand } from "../common/help.js";
 
 const currency = configs.modules.economy.currency;
 const bountyMin = Number(configs.modules.bounty.min ?? 0);
@@ -20,6 +21,9 @@ function getBounty(name) {
 registerCommand({
 	name: "bounty",
 	description: "Manage player bounty.",
+	run: function (player, ctx) {
+		helpCommand(player, "bounty");
+	},
 	children: [
 		{
 			type: "literal",
@@ -39,13 +43,17 @@ registerCommand({
 								const amount = Math.floor(args.amount);
 
 								if (amount <= 0) {
-									player.sendMessage(`§l§6> §r§cAmount must be greater than §g${currency}${metricNumber(0)}`);
+									player.sendMessage(
+										`§l§6> §r§cAmount must be greater than §g${currency}${metricNumber(0)}`
+									);
 									player.playSound("note.bass");
 									return;
 								}
 
 								if (amount < bountyMin) {
-									player.sendMessage(`§l§6> §r§cAmount must be greater than §g${currency}${metricNumber(bountyMin)}`);
+									player.sendMessage(
+										`§l§6> §r§cAmount must be greater than §g${currency}${metricNumber(bountyMin)}`
+									);
 									player.playSound("note.bass");
 									return;
 								}
@@ -62,7 +70,9 @@ registerCommand({
 								database.remove("money", player.name, amount);
 								database.add("bounty", targetName, amount);
 
-								world.sendMessage(`§l§9> §r§3${player.name} §badded §a${currency}${metricNumber(amount)}§b bounty to §e${targetName} §g${currency}${metricNumber(getBounty(targetName))}`);
+								world.sendMessage(
+									`§l§9> §r§3${player.name} §badded §a${currency}${metricNumber(amount)}§b bounty to §e${targetName} §g${currency}${metricNumber(getBounty(targetName))}`
+								);
 							}
 						}
 					]
@@ -100,7 +110,9 @@ registerCommand({
 			name: "top",
 			run(player) {
 				/** @type {string[]} */
-				const registered = /** @type {string[]} */ (database.get("player.registered") ?? []);
+				const registered = /** @type {string[]} */ (
+					database.get("player.registered") ?? []
+				);
 
 				const list = registered
 					.map(name => ({
@@ -118,7 +130,9 @@ registerCommand({
 				}
 
 				for (const [index, data] of list.entries()) {
-					player.sendMessage(`§a${index + 1}§2. §f${data.name} §8- §e${currency}${metricNumber(data.bounty)}`);
+					player.sendMessage(
+						`§a${index + 1}§2. §f${data.name} §8- §e${currency}${metricNumber(data.bounty)}`
+					);
 				}
 			}
 		}

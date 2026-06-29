@@ -1,4 +1,4 @@
-import { world } from "@minecraft/server";
+import { world, system } from "@minecraft/server";
 import { CommandQueue } from "../commands/core/registry/index.js";
 import { configs } from "../../core/configs.js";
 import database from "../../core/database.js";
