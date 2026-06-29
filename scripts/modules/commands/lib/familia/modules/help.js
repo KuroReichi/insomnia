@@ -47,7 +47,7 @@ import { getCommands } from "../../../core/registry/index.js";
  */
 
 const prefix = configs.commandPrefix;
-const PAGE_SIZE = 14;
+const PAGE_SIZE = 13;
 const MIN_SUGGESTION_SCORE = 6;
 
 /**

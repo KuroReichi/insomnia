@@ -198,7 +198,7 @@ function sendSyntaxError(player, args, index = Math.max(args.length - 1, 0)) {
 			{ text: "§c" },
 			{
 				translate: "commands.generic.syntax",
-				with: [before, wrong, after]
+				with: [`§7${before}§c`, `§e${wrong}§c`, `§7${after}§c`]
 			}
 		]
 	});

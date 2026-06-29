@@ -214,31 +214,18 @@ function familyRelationText(family) {
 
 /**
  * @param {number | string | Date} value
- * @param {string} [timezone="Asia/Jakarta"]
  * @returns {string}
  */
-function formatDate(value, timezone = "Asia/Jakarta") {
+function formatDate(value) {
 	const date = new Date(value);
 
-	const parts = new Intl.DateTimeFormat("en-GB", {
-		timeZone: timezone,
-		day: "2-digit",
-		month: "2-digit",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-		hour12: false,
-		timeZoneName: "short"
-	}).formatToParts(date);
+	/** @param {number} value */
+	const pad = value => String(value).padStart(2, "0");
 
-	/** @type {Record<string, string>} */
-	const data = {};
-
-	for (const part of parts) {
-		data[part.type] = part.value;
-	}
-
-	return `${data.day}/${data.month}/${data.year}, ${data.hour}:${data.minute} ${data.timeZoneName}`;
+	return (
+		`${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}, ` +
+		`${pad(date.getHours())}:${pad(date.getMinutes())} WIB`
+	);
 }
 
 /**
@@ -251,7 +238,7 @@ function buildInfoLines(family) {
 		` §eName: §f${family.name?.fullName ?? family.uid} §7[${family.name?.abbreviation ?? ""}]`,
 		` §eUID: §f${family.uid}`,
 		` §eFounder: §f${family.founder}`,
-		` §§eRecruiting: §f${family.open ? "§aOpen" : "§cClosed"}`,
+		` §eRecruiting: ${family.open ? "§aOpen" : "§cClosed"}`,
 		` §eCreated: §f${formatDate(family.since)}`,
 		` §eMembers: §f${familyMemberText(family)}`,
 		` §ePower: §f${familyPowerText(family)}`,
