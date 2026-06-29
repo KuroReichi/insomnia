@@ -6,7 +6,7 @@ Designed with modularity in mind, every subsystem operates independently while r
 
 ## Architecture
 
-The runtime begins with `scripts/index.js`, which initializes the configuration system, establishes the database connection, and subscribes to Minecraft server events.
+The runtime begins with [scripts/index.js](https://github.com/KuroReichi/insomnia/blob/main/scripts/index.js), which initializes the configuration system, establishes the database connection, and subscribes to Minecraft server events.
 
 Incoming events are dispatched to specialized modules responsible for gameplay mechanics, player tracking, and world management. Meanwhile, chat messages are processed through the command engine, where commands are parsed, validated, and executed before interacting with the database or configuration system.
 
@@ -79,3 +79,9 @@ graph TD
     class Evt_Spawn,Evt_Region,Evt_Lifesteal,Evt_Time,Stat_Tracker,Time_Tracker event;
     class Chat,CmdRegistry,Cmd_Eco,Cmd_Fam,Cmd_Misc cmd;
 ```
+
+## WakaTime Stats
+
+<p align="center">
+    <img src="https://wakatime.com/share/@kuroreichi/231a862f-6d12-47b3-a0db-696f53ec5acb.svg" alt="WakaTime Stats">
+</p>
