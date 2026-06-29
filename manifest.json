@@ -36,10 +36,6 @@
 		{
 			"module_name": "@minecraft/server-ui",
 			"version": "2.2.0-beta"
-		},
-		{
-			"module_name": "@minecraft/vanilla-data",
-			"version": "1.26.32"
 		}
 	]
 }
