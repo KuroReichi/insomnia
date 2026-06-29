@@ -129,7 +129,6 @@ let booted = false;
 const str = value => String(value ?? "").trim();
 
 /**
- * Normalisasi id dimensi murni string menghindari ReferenceError
  * @param {string} value
  * @returns {string}
  */
@@ -149,13 +148,8 @@ const normalizeDimensionId = value => {
 const hasBypass = (entity, bypass) => {
 	if (!entity || !bypass) return false;
 
-	// String murni, 100% aman tanpa butuh @minecraft/vanilla-data
 	if (entity.typeId !== "minecraft:player") return false;
-
-	// Casting eksplisit
 	const player = /** @type {Player} */ (/** @type {unknown} */ (entity));
-
-	// Membaca property `playerPermissionLevel` sesuai instruksi MS Docs
 	if (
 		bypass.operator &&
 		(player.playerPermissionLevel === PlayerPermissionLevel.Operator ||
@@ -509,7 +503,6 @@ world.afterEvents.worldLoad.subscribe(() => {
 
 	world.afterEvents.entitySpawn?.subscribe(event => {
 		const { entity } = event;
-		// Menggunakan murni String Vanilla agar tidak butuh import vanilla-data
 		if (!entity || entity.typeId === "minecraft:player") return;
 
 		const region = getBestRegion(entity.location, entity.dimension.id);
