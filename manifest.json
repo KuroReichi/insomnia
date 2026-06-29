@@ -5,7 +5,7 @@
 		"name": "Insomnia Core",
 		"description": "By KuroReichii",
 		"uuid": "1990a121-3ee2-4c1d-ba25-d8454911c4be",
-		"version": [1, 0, 0],
+		"version": [1, 0, 1],
 		"min_engine_version": [1, 26, 30]
 	},
 	"metadata": {
@@ -23,7 +23,7 @@
 		{
 			"type": "script",
 			"uuid": "239c134f-67bf-4738-9bcc-8c69d31b1f72",
-			"version": [1, 0, 0],
+			"version": [1, 0, 1],
 			"language": "javascript",
 			"entry": "scripts/index.js"
 		}
