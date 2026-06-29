@@ -1,7 +1,7 @@
 /**
  * @typedef {Object} RegionTargetFilter
  * @property {"blacklist" | "whitelist"} type
- * @property {string[]} list
+ * @property {(BlockTypeIDs | EntityTypeIDs | ItemTypeIDs)[]} list
  */
 
 /**
@@ -76,31 +76,10 @@
 
 /**
  * @typedef {Object} RegionProtectConfig
- * @property {string} dimension
+ * @property {DimensionTypeIDs} dimension
  * @property {RegionData} data
  */
 
-/**
- * @typedef {Object} AppConfigs
- * @property {string} commandPrefix
- * @property {{
- *   name: string,
- *   subname: string | undefined,
- *   founder: string,
- *   license: string,
- *   production: string
- * }} server
- * @property {{
- *   realtime: { enabled: boolean, timezone: string },
- *   regionProtect: RegionProtectConfig[],
- *   economy: { currency: string, default: number },
- *   bounty: { min: number }
- * }} modules
- */
-
-/**
- * @type {AppConfigs}
- */
 export const configs = {
 	commandPrefix: "!",
 	server: {
@@ -117,6 +96,7 @@ export const configs = {
 		},
 		regionProtect: [
 			{
+				/** @type {DimensionTypeIDs} */
 				dimension: "minecraft:overworld",
 				data: {
 					id: "insomnia.spawn",
@@ -140,6 +120,7 @@ export const configs = {
 							place: false,
 							interact: {
 								type: "whitelist",
+								/** @type {BlockTypeIDs[]} */
 								list: [
 									"minecraft:ender_chest",
 									"minecraft:enchanting_table"
@@ -153,6 +134,7 @@ export const configs = {
 							},
 							interact: {
 								type: "whitelist",
+								/** @type {EntityTypeIDs[]} */
 								list: ["minecraft:npc"]
 							}
 						},
@@ -161,6 +143,7 @@ export const configs = {
 							drop: false,
 							interact: {
 								type: "whitelist",
+								/** @type {ItemTypeIDs[]} */
 								list: ["minecraft:ender_pearl"]
 							}
 						}
