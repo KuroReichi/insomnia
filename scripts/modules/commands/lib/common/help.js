@@ -1,5 +1,5 @@
 import { Player } from "@minecraft/server";
-import { registerCommand, getCommands } from "../../core/registry/index.js";
+import { registerCommand, getCommands } from "../../core//registry/index.js";
 import { configs } from "../../../../core/configs.js";
 
 /**
@@ -96,7 +96,13 @@ function highlightMatch(text, query) {
 		return text;
 	}
 
-	return text.slice(0, i) + "§e" + text.slice(i, i + query.length) + "§r§f" + text.slice(i + query.length);
+	return (
+		text.slice(0, i) +
+		"§e" +
+		text.slice(i, i + query.length) +
+		"§r§f" +
+		text.slice(i + query.length)
+	);
 }
 
 /**
@@ -121,7 +127,12 @@ function buildUsages(node, path = []) {
 		if (child.type === "literal") {
 			usages.push(...buildUsages(child, [...path, child.name]));
 		} else if (child.type === "argument") {
-			usages.push(...buildUsages(child, [...path, `<${child.name}:${child.argType ?? "string"}>`]));
+			usages.push(
+				...buildUsages(child, [
+					...path,
+					`<${child.name}:${child.argType ?? "string"}>`
+				])
+			);
 		}
 	}
 
@@ -232,7 +243,9 @@ export function helpCommand(player, args) {
 		const end = start + PAGE_SIZE;
 		const list = commands.slice(start, end);
 
-		player.sendMessage(`§2--- §aShowing help page §7${page} §aof §7${totalPages} §g(§6${prefix}§ehelp§g) §2---§r`);
+		player.sendMessage(
+			`§2--- §aShowing help page §7${page} §aof §7${totalPages} §g(§6${prefix}§ehelp§g) §2---§r`
+		);
 
 		for (const cmd of list) {
 			const sortedAliases =
@@ -241,18 +254,27 @@ export function helpCommand(player, args) {
 					 * @param {string} a
 					 * @param {string} b
 					 */
-					(a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })
+					(a, b) =>
+						a.localeCompare(b, undefined, { sensitivity: "base" })
 				) || [];
 
-			const aliasText = sortedAliases.length ? ` §2[§a${sortedAliases.join("§7, §a")}§2]§r` : "";
-			player.sendMessage(`  §2» §f${prefix}${cmd.name}${aliasText} §7- §f${cmd.description ?? "No description"}`);
+			const aliasText = sortedAliases.length
+				? ` §2[§a${sortedAliases.join("§7, §a")}§2]§r`
+				: "";
+			player.sendMessage(
+				`  §2» §f${prefix}${cmd.name}${aliasText} §7- §f${cmd.description ?? "No description"}`
+			);
 		}
 
 		if (totalPages > 1) {
-			player.sendMessage(`§7Use ${prefix}help <page:int> to navigate pages`);
+			player.sendMessage(
+				`§7Use ${prefix}help <page:int> to navigate pages`
+			);
 		}
 
-		player.sendMessage(`§7Use ${prefix}help <commandName:string> for the details`);
+		player.sendMessage(
+			`§7Use ${prefix}help <commandName:string> for the details`
+		);
 		return;
 	}
 
@@ -286,7 +308,9 @@ export function helpCommand(player, args) {
 			player.sendMessage(`§8Showing ${suggestions.length} suggestion(s)`);
 
 			for (const s of suggestions) {
-				player.sendMessage(`  §e» §f${prefix}${highlightMatch(s.name, name)}`);
+				player.sendMessage(
+					`  §e» §f${prefix}${highlightMatch(s.name, name)}`
+				);
 			}
 		}
 		return;

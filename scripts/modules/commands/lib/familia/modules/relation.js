@@ -119,7 +119,12 @@ function getIndex() {
  */
 function getAllFamilias() {
 	return getIndex()
-		.map(uid => /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)))
+		.map(
+			uid =>
+				/** @type {FamiliaDataStore | undefined} */ (
+					database.get(uid, FAMILY_DB_KEY)
+				)
+		)
 		.filter(Boolean)
 		.map(family => /** @type {FamiliaDataStore} */ (family));
 }
@@ -153,7 +158,11 @@ function findFamilia(query) {
  * @returns {FamiliaDataStore | null}
  */
 function findFamilyByUid(uid) {
-	return /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)) ?? null;
+	return (
+		/** @type {FamiliaDataStore | undefined} */ (
+			database.get(uid, FAMILY_DB_KEY)
+		) ?? null
+	);
 }
 
 /**
@@ -161,7 +170,11 @@ function findFamilyByUid(uid) {
  * @returns {FamiliaPlayer}
  */
 function getPlayerState(player) {
-	return /** @type {FamiliaPlayer | undefined} */ (database.get("familia", player.name)) ?? { haveFamilia: false, data: null };
+	return (
+		/** @type {FamiliaPlayer | undefined} */ (
+			database.get("familia", player.name)
+		) ?? { haveFamilia: false, data: null }
+	);
 }
 
 /**
@@ -187,7 +200,10 @@ function saveFamily(family) {
 	family.description ??= "";
 	family.motd ??= "";
 	family.home ??= null;
-	family.power = Object.values(family.members).reduce((sum, member) => sum + Number(member?.power ?? 0), 0);
+	family.power = Object.values(family.members).reduce(
+		(sum, member) => sum + Number(member?.power ?? 0),
+		0
+	);
 	family.name ??= { abbreviation: "", fullName: "" };
 
 	database.set(family.uid, family, FAMILY_DB_KEY, true);
@@ -203,7 +219,11 @@ function saveFamily(family) {
  * @returns {boolean}
  */
 function hasMember(family, playerName) {
-	return Boolean(Object.keys(family.members ?? {}).find(name => lower(name) === lower(playerName)));
+	return Boolean(
+		Object.keys(family.members ?? {}).find(
+			name => lower(name) === lower(playerName)
+		)
+	);
 }
 
 /**
@@ -213,7 +233,16 @@ function hasMember(family, playerName) {
  */
 function canManage(player, family) {
 	const rank = family.members?.[player.name]?.rank ?? null;
-	const score = rank === "member" ? 1 : rank === "officer" ? 2 : rank === "co-leader" ? 3 : rank === "agent" ? 4 : 0;
+	const score =
+		rank === "member"
+			? 1
+			: rank === "officer"
+				? 2
+				: rank === "co-leader"
+					? 3
+					: rank === "agent"
+						? 4
+						: 0;
 	return score >= 3;
 }
 
@@ -231,7 +260,11 @@ function normalizeRelationType(text) {
  * @returns {FamiliaRelations | null}
  */
 function getRelation(source, target) {
-	return (source.relations ?? []).find(relation => relation.uid === target.uid) ?? null;
+	return (
+		(source.relations ?? []).find(
+			relation => relation.uid === target.uid
+		) ?? null
+	);
 }
 
 /**
@@ -249,7 +282,9 @@ function setRelationOnFamily(source, target, type) {
 		since: Date.now()
 	});
 
-	const index = source.relations.findIndex(relation => relation.uid === target.uid);
+	const index = source.relations.findIndex(
+		relation => relation.uid === target.uid
+	);
 	if (index >= 0) {
 		source.relations[index] = next;
 	} else {
@@ -298,7 +333,9 @@ export function setRelation(player, context, type) {
 	saveFamily(family);
 	saveFamily(target);
 
-	player.sendMessage(info(`Relation with §e${target.name.fullName}§a set to §e${type}§a.`));
+	player.sendMessage(
+		info(`Relation with §e${target.name.fullName}§a set to §e${type}§a.`)
+	);
 }
 
 /**
@@ -331,13 +368,19 @@ export function removeRelation(player, context) {
 		return;
 	}
 
-	family.relations = (family.relations ?? []).filter(relation => relation.uid !== target.uid);
-	target.relations = (target.relations ?? []).filter(relation => relation.uid !== family.uid);
+	family.relations = (family.relations ?? []).filter(
+		relation => relation.uid !== target.uid
+	);
+	target.relations = (target.relations ?? []).filter(
+		relation => relation.uid !== family.uid
+	);
 
 	saveFamily(family);
 	saveFamily(target);
 
-	player.sendMessage(info(`Removed relation with §e${target.name.fullName}§a.`));
+	player.sendMessage(
+		info(`Removed relation with §e${target.name.fullName}§a.`)
+	);
 }
 
 /**
@@ -359,7 +402,7 @@ export function listRelations(player) {
 		return;
 	}
 
-	const lines = ["§6§lFamilia Relations"];
+	const lines = ["§6§lFamilia Relations§r"];
 
 	for (const relation of relations) {
 		const target = findFamilyByUid(relation.uid);

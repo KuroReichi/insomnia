@@ -1,4 +1,4 @@
-import { Player, TicksPerSecond, system, world } from "@minecraft/server";
+import { TicksPerSecond, system, world } from "@minecraft/server";
 import database from "../../../core/database.js";
 
 const PLAYTIME_ID = "playtime";
@@ -8,31 +8,33 @@ const PLAYTIME_ID = "playtime";
  */
 export class Playtime {
 	/**
-	 * @param {Player} player
+	 * @param {string} playerName
 	 * @returns {void}
 	 */
-	static addTick(player) {
-		database.add(`${PLAYTIME_ID}.ticks`, player.name, 1);
+	static addTick(playerName) {
+		database.add(`${PLAYTIME_ID}.ticks`, playerName, 1);
 	}
 
 	/**
-	 * @param {Player} player
+	 * @param {string} playerName
 	 * @returns {void}
 	 */
-	static reset(player) {
-		database.set(`${PLAYTIME_ID}.ticks`, 0, player.name);
+	static reset(playerName) {
+		database.set(`${PLAYTIME_ID}.ticks`, 0, playerName);
 	}
 
-	/** @param {Player} player */
-	constructor(player) {
-		this.player = player;
+	/**
+	 * @param {string} playerName
+	 */
+	constructor(playerName) {
+		this.playerName = playerName;
 	}
 
 	/** @returns {number} */
 	get ticks() {
 		return Math.floor(
 			/** @type {number} */
-			database.get(`${PLAYTIME_ID}.ticks`, this.player.name) ?? 0
+			(database.get(`${PLAYTIME_ID}.ticks`, this.playerName) ?? 0)
 		);
 	}
 
@@ -106,7 +108,6 @@ export class Playtime {
 		const values = {
 			ticks: this.ticks,
 			seconds: this.totalSeconds,
-
 			d: this.days,
 			h: this.hours,
 			m: this.minutes,
@@ -116,11 +117,12 @@ export class Playtime {
 		return format.replace(/%([a-zA-Z]+)%/g, (match, token) => {
 			const key = token[0];
 
-			if (!(key in values)) {
-				return match;
-			}
+			if (!(key in values)) return match;
+
 			const value = String(values[key]);
-			return token.length === 1 ? value : value.padStart(token.length, "0");
+			return token.length === 1
+				? value
+				: value.padStart(token.length, "0");
 		});
 	}
 
@@ -133,7 +135,7 @@ export class Playtime {
 system.run(() => {
 	system.runInterval(() => {
 		for (const player of world.getAllPlayers()) {
-			Playtime.addTick(player);
+			Playtime.addTick(player.name);
 		}
 	}, 1);
 });

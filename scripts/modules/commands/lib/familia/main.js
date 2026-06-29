@@ -120,7 +120,7 @@ export class FamiliaMain {
 	 * All branches remain here so the parser shape stays centralized.
 	 */
 	constructor() {
-		/** @type {import("../../core/registry/index.js").Command} */
+		/** @type {import("../../core/registry").Command} */
 		const structure = {
 			name: "familia",
 			aliases: ["fam", "f"],

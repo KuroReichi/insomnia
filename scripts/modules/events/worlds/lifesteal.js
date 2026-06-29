@@ -126,7 +126,7 @@ world.afterEvents.entityDie.subscribe(event => {
 
 	const deathLine = atk
 		? `§7${player.name} §cwas slain by §e${atk.name} §7(§c:heart:${killerHealth}§7)§8.`
-		: `§7${player.name} §cdied §7(§8environment§7)§8.`;
+		: `§7${player.name} §cdied§8.`;
 
 	const rewardLine =
 		bountyPool > 0
@@ -174,17 +174,10 @@ world.afterEvents.itemUse.subscribe(event => {
 	/** @type {import("@minecraft/server").Container} */
 	const container = inventory.container;
 
-	const slot = /** @type {number} */ (container.find(event.itemStack));
-	if (slot < 0) return;
+	const slot = /** @type {number} */ (player.selectedSlotIndex);
 
 	const item = event.itemStack.clone();
 	item.amount -= 1;
-
-	if (item.amount <= 0) {
-		container.setItem(slot, undefined);
-	} else {
-		container.setItem(slot, item);
-	}
 
 	if (Math.floor(Number(health.defaultValue)) >= 40) {
 		player.sendMessage({
@@ -192,6 +185,12 @@ world.afterEvents.itemUse.subscribe(event => {
 		});
 		player.playSound("note.bass");
 		return;
+	}
+
+	if (item.amount <= 0) {
+		container.setItem(slot, undefined);
+	} else {
+		container.setItem(slot, item);
 	}
 
 	const nextHealth = Math.floor(Number(health.defaultValue) + 2);

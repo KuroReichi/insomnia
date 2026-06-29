@@ -119,7 +119,12 @@ function getIndex() {
  */
 function getAllFamilias() {
 	return getIndex()
-		.map(uid => /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)))
+		.map(
+			uid =>
+				/** @type {FamiliaDataStore | undefined} */ (
+					database.get(uid, FAMILY_DB_KEY)
+				)
+		)
 		.filter(Boolean)
 		.map(family => /** @type {FamiliaDataStore} */ (family));
 }
@@ -153,7 +158,11 @@ function findFamilia(query) {
  * @returns {FamiliaDataStore | null}
  */
 function findFamilyByUid(uid) {
-	return /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)) ?? null;
+	return (
+		/** @type {FamiliaDataStore | undefined} */ (
+			database.get(uid, FAMILY_DB_KEY)
+		) ?? null
+	);
 }
 
 /**
@@ -161,7 +170,11 @@ function findFamilyByUid(uid) {
  * @returns {FamiliaPlayer}
  */
 function getPlayerState(player) {
-	return /** @type {FamiliaPlayer | undefined} */ (database.get("familia", player.name)) ?? { haveFamilia: false, data: null };
+	return (
+		/** @type {FamiliaPlayer | undefined} */ (
+			database.get("familia", player.name)
+		) ?? { haveFamilia: false, data: null }
+	);
 }
 
 /**
@@ -194,7 +207,10 @@ function saveFamily(family) {
 	family.description ??= "";
 	family.motd ??= "";
 	family.home ??= null;
-	family.power = Object.values(family.members).reduce((sum, member) => sum + Number(member?.power ?? 0), 0);
+	family.power = Object.values(family.members).reduce(
+		(sum, member) => sum + Number(member?.power ?? 0),
+		0
+	);
 	family.name ??= { abbreviation: "", fullName: "" };
 
 	database.set(family.uid, family, FAMILY_DB_KEY, true);
@@ -210,7 +226,9 @@ function saveFamily(family) {
  * @returns {boolean}
  */
 function hasRequest(family, player) {
-	return Boolean((family.requests ?? []).find(name => lower(name) === lower(player.name)));
+	return Boolean(
+		(family.requests ?? []).find(name => lower(name) === lower(player.name))
+	);
 }
 
 /**
@@ -219,7 +237,9 @@ function hasRequest(family, player) {
  * @returns {boolean}
  */
 function hasInvite(family, player) {
-	return Boolean((family.invites ?? []).find(name => lower(name) === lower(player.name)));
+	return Boolean(
+		(family.invites ?? []).find(name => lower(name) === lower(player.name))
+	);
 }
 
 /**
@@ -239,7 +259,16 @@ function getPlayerFamily(player) {
  */
 function canManage(player, family) {
 	const rank = family.members?.[player.name]?.rank ?? null;
-	const score = rank === "member" ? 1 : rank === "officer" ? 2 : rank === "co-leader" ? 3 : rank === "agent" ? 4 : 0;
+	const score =
+		rank === "member"
+			? 1
+			: rank === "officer"
+				? 2
+				: rank === "co-leader"
+					? 3
+					: rank === "agent"
+						? 4
+						: 0;
 	return score >= 2;
 }
 
@@ -261,8 +290,12 @@ function joinFamily(player, family, rank = "member", title = "") {
 	};
 
 	family.members[player.name] = member;
-	family.requests = (family.requests ?? []).filter(name => lower(name) !== lower(player.name));
-	family.invites = (family.invites ?? []).filter(name => lower(name) !== lower(player.name));
+	family.requests = (family.requests ?? []).filter(
+		name => lower(name) !== lower(player.name)
+	);
+	family.invites = (family.invites ?? []).filter(
+		name => lower(name) !== lower(player.name)
+	);
 	saveFamily(family);
 	setPlayerState(player, { haveFamilia: true, data: member });
 	return member;
@@ -292,7 +325,12 @@ export function listRequests(player) {
 		return;
 	}
 
-	player.sendMessage(["§6§lPending Requests", ...requests.map(name => `§e- §f${name}`)].join("\n"));
+	player.sendMessage(
+		[
+			"§6§lPending Requests§r",
+			...requests.map(name => `§e- §f${name}`)
+		].join("\n")
+	);
 }
 
 /**
@@ -330,7 +368,9 @@ export function acceptRequest(player, context) {
 	}
 
 	joinFamily(context.player, family, "member", "");
-	player.sendMessage(info(`Accepted §e${context.player.name}§a into the Familia.`));
+	player.sendMessage(
+		info(`Accepted §e${context.player.name}§a into the Familia.`)
+	);
 	context.player.sendMessage(info(`You joined §e${family.name.fullName}§a.`));
 }
 
@@ -363,9 +403,15 @@ export function denyRequest(player, context) {
 		return;
 	}
 
-	family.requests = (family.requests ?? []).filter(name => lower(name) !== lower(context.player.name));
+	family.requests = (family.requests ?? []).filter(
+		name => lower(name) !== lower(context.player.name)
+	);
 	saveFamily(family);
 
-	player.sendMessage(warn(`Denied §e${context.player.name}§e's join request.`));
-	context.player.sendMessage(fail(`Your request to join §e${family.name.fullName}§c was denied.`));
+	player.sendMessage(
+		warn(`Denied §e${context.player.name}§e's join request.`)
+	);
+	context.player.sendMessage(
+		fail(`Your request to join §e${family.name.fullName}§c was denied.`)
+	);
 }
