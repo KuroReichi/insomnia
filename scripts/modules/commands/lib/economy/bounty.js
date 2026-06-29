@@ -22,7 +22,7 @@ registerCommand({
 	name: "bounty",
 	description: "Manage player bounty.",
 	run: function (player, ctx) {
-		helpCommand(player, "bounty");
+		helpCommand(player, { query: "bounty" });
 	},
 	children: [
 		{
@@ -41,6 +41,14 @@ registerCommand({
 							run(player, args) {
 								const targetName = args.player;
 								const amount = Math.floor(args.amount);
+
+								if (player.name === targtName) {
+									player.sendMessage({
+										text: "§l§6> §r§cYou cannot add bounty to yourself."
+									});
+									player.playSound("note.bass");
+									return;
+								}
 
 								if (amount <= 0) {
 									player.sendMessage(
@@ -113,6 +121,7 @@ registerCommand({
 				const registered = /** @type {string[]} */ (
 					database.get("player.registered") ?? []
 				);
+				player.playSound("random.orb");
 
 				const list = registered
 					.map(name => ({
