@@ -20,11 +20,12 @@ function Money(player, args) {
 			`§l§2> §r§a${args.player} money§8: §e${configs.modules.economy.currency}${metricNumber(Number(database.get("money", args.player)))}`
 		);
 	}
+	player.playSound("random.orb");
 }
 
 registerCommand({
 	name: "money",
-	aliases: ["currency"],
+	aliases: ["balance", "bal"],
 	description: "Return your current money",
 	run: Money,
 	children: [
