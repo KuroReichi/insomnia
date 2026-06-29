@@ -4,10 +4,8 @@ import database from "../../../core/database.js";
 
 /**
  * @typedef {import("@minecraft/server").Player} Player
- * @typedef {import("@minecraft/server").Block} Block
  * @typedef {import("@minecraft/server").Entity} Entity
  * @typedef {import("@minecraft/server").Vector3} Vector3
- * @typedef {import("@minecraft/server").Dimension} Dimension
  */
 
 /**
@@ -101,7 +99,7 @@ import database from "../../../core/database.js";
  * @property {RegionBypass} bypass
  * @property {"point" | "radius"} type
  * @property {RegionPermission} permission
- * @property {Vector3} [point]
+ * @property {{x:number, z:number}} [point]
  * @property {{x:number, z:number}} [center]
  * @property {number} [radius]
  */
@@ -147,9 +145,10 @@ const normalizeDimensionId = value => {
  */
 const hasBypass = (entity, bypass) => {
 	if (!entity || !bypass) return false;
-
 	if (entity.typeId !== "minecraft:player") return false;
+
 	const player = /** @type {Player} */ (/** @type {unknown} */ (entity));
+
 	if (
 		bypass.operator &&
 		(player.playerPermissionLevel === PlayerPermissionLevel.Operator ||
@@ -160,7 +159,6 @@ const hasBypass = (entity, bypass) => {
 
 	if (
 		Array.isArray(bypass.gamertags) &&
-		bypass.gamertags.length > 0 &&
 		bypass.gamertags.includes(player.name)
 	) {
 		return true;
@@ -168,7 +166,6 @@ const hasBypass = (entity, bypass) => {
 
 	if (
 		Array.isArray(bypass.tags) &&
-		bypass.tags.length > 0 &&
 		bypass.tags.some(tag => player.hasTag(tag))
 	) {
 		return true;
@@ -183,11 +180,27 @@ const hasBypass = (entity, bypass) => {
  * @returns {boolean}
  */
 const isTargetDenied = (filter, targetId) => {
-	if (!filter || !Array.isArray(filter.list) || filter.list.length === 0)
+	if (!filter || !Array.isArray(filter.list) || filter.list.length === 0) {
 		return false;
+	}
+
 	const matched = filter.list.includes(targetId);
 	return filter.type === "whitelist" ? !matched : matched;
 };
+
+/**
+ * @param {Player | undefined} player
+ * @param {string} action
+ * @returns {void}
+ */
+function sendDeniedMessage(player, action) {
+	if (!player) return;
+
+	player.sendMessage(
+		`§l§6> §r§cYou cannot §7${action} §cInside this region.`
+	);
+	player.playSound?.("note.bass");
+}
 
 /**
  * @param {RegionProtectConfig} config
@@ -226,8 +239,9 @@ const compileRegion = config => {
 			typeof center !== "object" ||
 			typeof center.x !== "number" ||
 			typeof center.z !== "number"
-		)
+		) {
 			return null;
+		}
 
 		return {
 			id: str(data.id),
@@ -236,8 +250,11 @@ const compileRegion = config => {
 			priority,
 			bypass,
 			type: "radius",
-			center: { x: center.x, z: center.z },
-			radius,
+			center: {
+				x: Math.floor(center.x),
+				z: Math.floor(center.z)
+			},
+			radius: Math.floor(radius),
 			permission: data.permission
 		};
 	}
@@ -245,13 +262,15 @@ const compileRegion = config => {
 	if (data.type === "point") {
 		const value = /** @type {RegionPointValue} */ (data.value);
 		const pt = value?.point;
+
 		if (
 			!pt ||
 			typeof pt.x !== "number" ||
 			typeof pt.y !== "number" ||
 			typeof pt.z !== "number"
-		)
+		) {
 			return null;
+		}
 
 		return {
 			id: str(data.id),
@@ -260,7 +279,10 @@ const compileRegion = config => {
 			priority,
 			bypass,
 			type: "point",
-			point: { x: pt.x, y: pt.y, z: pt.z },
+			point: {
+				x: Math.floor(pt.x),
+				z: Math.floor(pt.z)
+			},
 			permission: data.permission
 		};
 	}
@@ -276,12 +298,11 @@ const compileRegion = config => {
 const regionContains = (region, location) => {
 	if (!region.enabled) return false;
 
+	const x = Math.floor(location.x);
+	const z = Math.floor(location.z);
+
 	if (region.type === "point" && region.point) {
-		return (
-			Math.floor(location.x) === Math.floor(region.point.x) &&
-			Math.floor(location.y) === Math.floor(region.point.y) &&
-			Math.floor(location.z) === Math.floor(region.point.z)
-		);
+		return x === region.point.x && z === region.point.z;
 	}
 
 	if (
@@ -289,9 +310,10 @@ const regionContains = (region, location) => {
 		region.center &&
 		region.radius !== undefined
 	) {
-		const dx = location.x - region.center.x;
-		const dz = location.z - region.center.z;
-		return dx * dx + dz * dz <= region.radius * region.radius;
+		return (
+			Math.abs(x - region.center.x) <= region.radius &&
+			Math.abs(z - region.center.z) <= region.radius
+		);
 	}
 
 	return false;
@@ -310,6 +332,7 @@ const getBestRegion = (location, dimensionId) => {
 	for (const region of regions) {
 		if (regionContains(region, location)) return region;
 	}
+
 	return null;
 };
 
@@ -336,15 +359,17 @@ const loadRegionProtect = () => {
 	}
 
 	for (const region of compiled) {
-		if (!dimensionRegions[region.dimensionId])
+		if (!dimensionRegions[region.dimensionId]) {
 			dimensionRegions[region.dimensionId] = [];
+		}
 		dimensionRegions[region.dimensionId].push(region);
 	}
 
 	const existingEntries = database.getAllBy(REGION_DB_KEY);
-	if (existingEntries && Array.isArray(existingEntries)) {
-		for (const entry of existingEntries)
+	if (Array.isArray(existingEntries)) {
+		for (const entry of existingEntries) {
 			database.delete(entry.id, REGION_DB_KEY);
+		}
 	}
 
 	for (const region of compiled) {
@@ -368,6 +393,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 			!hasBypass(player, region.bypass)
 		) {
 			event.cancel = true;
+			sendDeniedMessage(player, "break blocks");
 		}
 	});
 
@@ -381,6 +407,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 			!hasBypass(player, region.bypass)
 		) {
 			event.cancel = true;
+			sendDeniedMessage(player, "place blocks");
 		}
 	});
 
@@ -394,6 +421,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 			!hasBypass(player, region.bypass)
 		) {
 			event.cancel = true;
+			sendDeniedMessage(player, "interact with this block");
 		}
 	});
 
@@ -410,6 +438,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 			!hasBypass(player, region.bypass)
 		) {
 			event.cancel = true;
+			sendDeniedMessage(player, "interact with this entity");
 		}
 	});
 
@@ -428,6 +457,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 			!hasBypass(source, region.bypass)
 		) {
 			event.cancel = true;
+			sendDeniedMessage(/** @type {Player} */ (source), "use this item");
 		}
 	});
 
@@ -441,6 +471,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 			!hasBypass(entity, region.bypass)
 		) {
 			event.cancel = true;
+			sendDeniedMessage(/** @type {Player} */ (entity), "pickup items");
 		}
 	});
 
@@ -451,40 +482,54 @@ world.afterEvents.worldLoad.subscribe(() => {
 		if (
 			hurtEntity?.typeId !== "minecraft:player" ||
 			damagingEntity?.typeId !== "minecraft:player"
-		)
+		) {
 			return;
+		}
 
+		const attacker = /** @type {Player} */ (damagingEntity);
 		const region = getBestRegion(
 			hurtEntity.location,
 			hurtEntity.dimension.id
 		);
-		if (region && region.permission.pvp === false) {
+
+		if (
+			region &&
+			region.permission.pvp === false &&
+			!hasBypass(attacker, region.bypass)
+		) {
 			event.cancel = true;
+			sendDeniedMessage(attacker, "attack players");
 		}
 	});
 
-	world.beforeEvents.explosion?.subscribe(event => {
+	world.beforeEvents.explosion.subscribe(event => {
 		const impactedBlocks =
 			typeof event.getImpactedBlocks === "function"
 				? event.getImpactedBlocks()
 				: [];
+
 		if (impactedBlocks.length === 0) return;
 
-		const dimensionId = event.dimension.id;
-		const regions = dimensionRegions[normalizeDimensionId(dimensionId)];
-		if (!regions || regions.length === 0) return;
+		/** @type {import("@minecraft/server").Block[]} */
+		const filtered = [];
 
 		for (const block of impactedBlocks) {
-			const region = getBestRegion(block.location, dimensionId);
+			const region = getBestRegion(block.location, block.dimension.id);
+
 			if (region && region.permission.explosion === false) {
-				event.cancel = true;
-				return;
+				continue;
 			}
+
+			filtered.push(block);
+		}
+
+		if (typeof event.setImpactedBlocks === "function") {
+			event.setImpactedBlocks(filtered);
 		}
 	});
 
 	world.afterEvents.entityItemDrop?.subscribe(event => {
-		const { entity } = event;
+		const entity = event.entity;
 		if (!entity) return;
 
 		const region = getBestRegion(entity.location, entity.dimension.id);
@@ -497,7 +542,9 @@ world.afterEvents.worldLoad.subscribe(() => {
 			const payload = /** @type {any} */ (event);
 			const dropped =
 				payload.itemEntity ?? payload.item ?? payload.droppedItem;
+
 			if (dropped?.remove) dropped.remove();
+			sendDeniedMessage(/** @type {Player} */ (entity), "drop items");
 		}
 	});
 
@@ -511,9 +558,11 @@ world.afterEvents.worldLoad.subscribe(() => {
 		const familyComponent = /** @type {any} */ (
 			entity.getComponent("minecraft:type_family")
 		);
+
 		const isAnimal =
 			typeof familyComponent?.hasTypeFamily === "function" &&
 			familyComponent.hasTypeFamily("animal");
+
 		const isMonster =
 			typeof familyComponent?.hasTypeFamily === "function" &&
 			familyComponent.hasTypeFamily("monster");

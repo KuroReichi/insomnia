@@ -8,8 +8,24 @@ import { getFamiliaHome, setFamiliaHome } from "./modules/home.js";
 import { openFamilia, closeFamilia } from "./modules/status.js";
 import { showFamiliaInfo, listFamilias } from "./modules/info.js";
 import { listRequests, acceptRequest, denyRequest } from "./modules/request.js";
-import { setRelation, removeRelation, listRelations } from "./modules/relation.js";
-import { inviteFamilia, kickFamilia, setFamiliaRank, promoteFamilia, demoteFamilia, setFamiliaTitle, setFamiliaAbbreviation, setFamiliaFullname, setFamiliaMotd, setFamiliaDescription, disbandFamilia } from "./modules/manage.js";
+import {
+	setRelation,
+	removeRelation,
+	listRelations
+} from "./modules/relation.js";
+import {
+	inviteFamilia,
+	kickFamilia,
+	setFamiliaRank,
+	promoteFamilia,
+	demoteFamilia,
+	setFamiliaTitle,
+	setFamiliaAbbreviation,
+	setFamiliaFullname,
+	setFamiliaMotd,
+	setFamiliaDescription,
+	disbandFamilia
+} from "./modules/manage.js";
 import { helpFamilia } from "./modules/help.js";
 
 /**
@@ -240,10 +256,24 @@ export class FamiliaMain {
 									name: "faction",
 									type: "argument",
 									argType: "string",
-									run: (player, context) => setRelation(player, /** @type {FamiliaRelationContext} */ (context), "ally")
+									run: (player, context) =>
+										setRelation(
+											player,
+											/** @type {FamiliaRelationContext} */ (
+												context
+											),
+											"ally"
+										)
 								}
 							],
-							run: (player, context) => setRelation(player, /** @type {FamiliaRelationContext} */ (context), "ally")
+							run: (player, context) =>
+								setRelation(
+									player,
+									/** @type {FamiliaRelationContext} */ (
+										context
+									),
+									"ally"
+								)
 						},
 						{
 							name: "enemy",
@@ -253,10 +283,24 @@ export class FamiliaMain {
 									name: "faction",
 									type: "argument",
 									argType: "string",
-									run: (player, context) => setRelation(player, /** @type {FamiliaRelationContext} */ (context), "enemy")
+									run: (player, context) =>
+										setRelation(
+											player,
+											/** @type {FamiliaRelationContext} */ (
+												context
+											),
+											"enemy"
+										)
 								}
 							],
-							run: (player, context) => setRelation(player, /** @type {FamiliaRelationContext} */ (context), "enemy")
+							run: (player, context) =>
+								setRelation(
+									player,
+									/** @type {FamiliaRelationContext} */ (
+										context
+									),
+									"enemy"
+								)
 						},
 						{
 							name: "neutral",
@@ -266,10 +310,24 @@ export class FamiliaMain {
 									name: "faction",
 									type: "argument",
 									argType: "string",
-									run: (player, context) => setRelation(player, /** @type {FamiliaRelationContext} */ (context), "neutral")
+									run: (player, context) =>
+										setRelation(
+											player,
+											/** @type {FamiliaRelationContext} */ (
+												context
+											),
+											"neutral"
+										)
 								}
 							],
-							run: (player, context) => setRelation(player, /** @type {FamiliaRelationContext} */ (context), "neutral")
+							run: (player, context) =>
+								setRelation(
+									player,
+									/** @type {FamiliaRelationContext} */ (
+										context
+									),
+									"neutral"
+								)
 						},
 						{
 							name: "remove",
@@ -331,7 +389,12 @@ export class FamiliaMain {
 									name: "rank",
 									type: "argument",
 									argType: "enum",
-									values: ["member", "officer", "co-leader", "agent"],
+									values: [
+										"member",
+										"officer",
+										"co-leader",
+										"agent"
+									],
 									run: setFamiliaRank
 								}
 							],
@@ -462,6 +525,19 @@ export class FamiliaMain {
 				},
 				{
 					name: "help",
+					type: "literal",
+					children: [
+						{
+							name: "command",
+							type: "argument",
+							argType: "string",
+							run: helpFamilia
+						}
+					],
+					run: helpFamilia
+				},
+				{
+					name: "?",
 					type: "literal",
 					children: [
 						{

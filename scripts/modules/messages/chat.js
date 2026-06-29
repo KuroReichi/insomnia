@@ -45,16 +45,19 @@ world.beforeEvents.chatSend.subscribe(async event => {
 			database.set("command-logs", logs);
 		});
 	} else {
+		event.cancel = true;
 		system.run(() => {
-			event.cancel = true;
 			event.sender.sendMessage({
 				rawtext: [
 					{
-						text: "§c",
+						text: "§c"
+					},
+					{
 						translate: "permissions.chatmute"
 					}
 				]
 			});
+			event.sender.playSound("note.bass");
 		});
 	}
 });
