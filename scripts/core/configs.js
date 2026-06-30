@@ -110,7 +110,7 @@ export const configs = {
 					type: "radius",
 					value: {
 						center: "spawn",
-						radius: 500
+						radius: 250
 					},
 					permission: {
 						pvp: false,
