@@ -3,6 +3,7 @@ import { configs } from "../../../core/configs.js";
 import database from "../../../core/database.js";
 import { valuable } from "./configs.js";
 import { getDate } from "../../utility/date";
+import { metricNumber } from "../../utility/metrics";
 
 /**
  * @typedef {import("@minecraft/server").Player} Player
@@ -16,21 +17,25 @@ import { getDate } from "../../utility/date";
  */
 
 /**
- * @typedef {Object} PendingReward
+ * @typedef {"break" | "place"} TransactionType
+ */
+
+/**
+ * @typedef {Object} PendingTransaction
  * @property {number} amount
  * @property {number} timer
  * @property {Player} player
- * @property {"break" | "place"} type
+ * @property {TransactionType} type
  */
 
-const REWARD_DELAY = 20 * 2;
+const REWARD_DELAY = 20 * 1;
 const currency = configs.modules.economy.currency;
 
-const PLACE_MIN_PERCENT = 32.71;
-const PLACE_MAX_PERCENT = 44.39;
+const PLACE_MIN_PERCENT = 132.71;
+const PLACE_MAX_PERCENT = 144.39;
 
-/** @type {Map<string, PendingReward>} */
-const pendingRewards = new Map();
+/** @type {Map<string, PendingTransaction>} */
+const pendingTransactions = new Map();
 
 /**
  * @param {string} blockId
@@ -93,13 +98,24 @@ function addDailyStat(playerName, type, amount) {
 }
 
 /**
+ * @param {string} playerName
+ * @param {TransactionType} type
+ * @returns {string}
+ */
+function getTransactionKey(playerName, type) {
+	return `${playerName}:${type}`;
+}
+
+/**
  * @param {Player} player
  * @param {number} amount
- * @param {"break" | "place"} type
+ * @param {TransactionType} type
  */
 function queueTransaction(player, amount, type) {
 	const playerName = player.name;
-	let pending = pendingRewards.get(playerName);
+	const key = getTransactionKey(playerName, type);
+
+	let pending = pendingTransactions.get(key);
 
 	if (!pending) {
 		pending = {
@@ -108,8 +124,7 @@ function queueTransaction(player, amount, type) {
 			player,
 			type
 		};
-
-		pendingRewards.set(playerName, pending);
+		pendingTransactions.set(key, pending);
 	}
 
 	pending.amount += amount;
@@ -118,35 +133,35 @@ function queueTransaction(player, amount, type) {
 
 	system.clearRun(pending.timer);
 
-	const sign = pending.type === "break" ? "+" : "-";
+	const sign = type === "break" ? "+" : "-";
 	const absPending = Math.abs(pending.amount);
 
 	player.onScreenDisplay.setActionBar(
-		`§e${sign}${currency}${amount} §7(§6${sign}${currency}${absPending}§7)`
+		`§8${sign}§7${currency}${metricNumber(amount)} ${type === "break" ? "§2" : "§4"}(${type === "break" ? "§a" : "§c"}${currency}${metricNumber(absPending)}${type === "break" ? "§2" : "§4"})`
 	);
 
 	pending.timer = system.runTimeout(() => {
-		flushPending(playerName);
+		flushPending(key);
 	}, REWARD_DELAY);
 }
 
 /**
- * @param {string} playerName
+ * @param {string} key
  */
-function flushPending(playerName) {
-	const pending = pendingRewards.get(playerName);
+function flushPending(key) {
+	const pending = pendingTransactions.get(key);
 	if (!pending) return;
 
 	if (pending.type === "break") {
-		addMoney(playerName, pending.amount);
+		addMoney(pending.player.name, pending.amount);
 	} else {
-		takeMoney(playerName, pending.amount);
+		takeMoney(pending.player.name, pending.amount);
 	}
 
 	if (pending.player.isValid) {
-		const sign = pending.type === "break" ? "+" : "-";
+		const sign = pending.type === "break" ? "§2+§a" : "§2-§c";
 		pending.player.onScreenDisplay.setActionBar(
-			`§a${sign}${currency}${pending.amount}`
+			`${sign}${currency}${metricNumber(pending.amount)}`
 		);
 
 		if (pending.type === "break") {
@@ -156,7 +171,7 @@ function flushPending(playerName) {
 		}
 	}
 
-	pendingRewards.delete(playerName);
+	pendingTransactions.delete(key);
 }
 
 /**
@@ -189,7 +204,7 @@ world.afterEvents.playerPlaceBlock.subscribe(event => {
 	if (!player.isValid) return;
 
 	const blockId =
-		event.block?.typeId ?? event.block.permutation.type.id ?? "";
+		event.block?.typeId ?? event.block?.permutation?.type?.id ?? "";
 
 	const item = getValuable(blockId);
 	if (!item) return;

@@ -127,7 +127,12 @@ function saveIndex(list) {
  */
 function getAllFamilias() {
 	return getIndex()
-		.map(uid => /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)))
+		.map(
+			uid =>
+				/** @type {FamiliaDataStore | undefined} */ (
+					database.get(uid, FAMILY_DB_KEY)
+				)
+		)
 		.filter(Boolean)
 		.map(family => /** @type {FamiliaDataStore} */ (family));
 }
@@ -161,7 +166,11 @@ function findFamilia(query) {
  * @returns {FamiliaDataStore | null}
  */
 function findFamilyByUid(uid) {
-	return /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)) ?? null;
+	return (
+		/** @type {FamiliaDataStore | undefined} */ (
+			database.get(uid, FAMILY_DB_KEY)
+		) ?? null
+	);
 }
 
 /**
@@ -169,7 +178,11 @@ function findFamilyByUid(uid) {
  * @returns {FamiliaPlayer}
  */
 function getPlayerState(player) {
-	return /** @type {FamiliaPlayer | undefined} */ (database.get("familia", player.name)) ?? { haveFamilia: false, data: null };
+	return (
+		/** @type {FamiliaPlayer | undefined} */ (
+			database.get("familia", player.name)
+		) ?? { haveFamilia: false, data: null }
+	);
 }
 
 /**
@@ -186,7 +199,12 @@ function setPlayerState(player, state) {
  * @returns {void}
  */
 function clearPlayerState(player) {
-	database.set("familia", { haveFamilia: false, data: null }, player.name, true);
+	database.set(
+		"familia",
+		{ haveFamilia: false, data: null },
+		player.name,
+		true
+	);
 }
 
 /**
@@ -202,7 +220,10 @@ function saveFamily(family) {
 	family.description ??= "";
 	family.motd ??= "";
 	family.home ??= null;
-	family.power = Object.values(family.members).reduce((sum, member) => sum + Number(member?.power ?? 0), 0);
+	family.power = Object.values(family.members).reduce(
+		(sum, member) => sum + Number(member?.power ?? 0),
+		0
+	);
 	family.name ??= { abbreviation: "", fullName: "" };
 
 	database.set(family.uid, family, FAMILY_DB_KEY, true);
@@ -230,8 +251,12 @@ function joinFamily(player, family, rank = "member", title = "") {
 	};
 
 	family.members[player.name] = member;
-	family.requests = (family.requests ?? []).filter(name => lower(name) !== lower(player.name));
-	family.invites = (family.invites ?? []).filter(name => lower(name) !== lower(player.name));
+	family.requests = (family.requests ?? []).filter(
+		name => lower(name) !== lower(player.name)
+	);
+	family.invites = (family.invites ?? []).filter(
+		name => lower(name) !== lower(player.name)
+	);
 	saveFamily(family);
 	setPlayerState(player, { haveFamilia: true, data: member });
 	return member;
@@ -249,7 +274,10 @@ function joinFamily(player, family, rank = "member", title = "") {
 export function joinFamilia(player, context) {
 	const target = clean(context.faction);
 	if (!target) {
-		failNow(player, "Invalid or missing arguments. Type §e/familia help§c for proper command usage.");
+		failNow(
+			player,
+			"Invalid or missing arguments. Type §e!familia help§c for proper command usage."
+		);
 		return;
 	}
 
@@ -269,10 +297,18 @@ export function joinFamilia(player, context) {
 		return;
 	}
 
-	const invited = (family.invites ?? []).some(name => lower(name) === lower(player.name));
+	const invited = (family.invites ?? []).some(
+		name => lower(name) === lower(player.name)
+	);
 	if (family.open || invited) {
 		joinFamily(player, family, "member", "");
-		player.sendMessage(info(invited ? `You accepted the invitation and joined §e${family.name.fullName}§a.` : `You joined §e${family.name.fullName}§a.`));
+		player.sendMessage(
+			info(
+				invited
+					? `You accepted the invitation and joined §e${family.name.fullName}§a.`
+					: `You joined §e${family.name.fullName}§a.`
+			)
+		);
 		return;
 	}
 
@@ -282,7 +318,11 @@ export function joinFamilia(player, context) {
 		saveFamily(family);
 	}
 
-	player.sendMessage(warn(`Request sent to join §a${family.name.fullName}§e. Waiting for approval...`));
+	player.sendMessage(
+		warn(
+			`Request sent to join §a${family.name.fullName}§e. Waiting for approval...`
+		)
+	);
 }
 
 /**
@@ -291,5 +331,9 @@ export function joinFamilia(player, context) {
  * @returns {boolean}
  */
 function familyMemberCount(family, playerName) {
-	return Boolean(Object.keys(family.members ?? {}).find(name => lower(name) === lower(playerName)));
+	return Boolean(
+		Object.keys(family.members ?? {}).find(
+			name => lower(name) === lower(playerName)
+		)
+	);
 }

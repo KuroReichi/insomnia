@@ -156,7 +156,7 @@ export const configs = {
 			default: 10000
 		},
 		bounty: {
-			min: 1000
+			min: 500
 		}
 	}
 };
