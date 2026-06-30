@@ -116,7 +116,7 @@ import { helpFamilia } from "./modules/help.js";
  */
 export class FamiliaMain {
 	/**
-	 * Build and register the `/familia` command tree.
+	 * Build and register the `${prefix}familia` command tree.
 	 * All branches remain here so the parser shape stays centralized.
 	 */
 	constructor() {

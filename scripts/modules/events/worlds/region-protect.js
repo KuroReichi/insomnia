@@ -6,6 +6,8 @@ import database from "../../../core/database.js";
  * @typedef {import("@minecraft/server").Player} Player
  * @typedef {import("@minecraft/server").Entity} Entity
  * @typedef {import("@minecraft/server").Vector3} Vector3
+ * @typedef {import("@minecraft/server").Container} Container
+ * @typedef {import("@minecraft/server").EntityInventoryComponent} EntityInventoryComponent
  */
 
 /**
@@ -104,12 +106,19 @@ import database from "../../../core/database.js";
  * @property {number} [radius]
  */
 
+/**
+ * @typedef {Object} ActionLedger
+ * @property {number} tick
+ * @property {Set<string>} workflows
+ * @property {boolean} alerted
+ */
+
 const REGION_DB_KEY = "region";
 
+/** @type {any[]} */
+const rawRegionConfigs = configs?.modules?.regionProtect;
 /** @type {RegionProtectConfig[]} */
-const regionConfigs = Array.isArray(configs?.modules?.regionProtect)
-	? configs.modules.regionProtect
-	: [];
+const regionConfigs = Array.isArray(rawRegionConfigs) ? rawRegionConfigs : [];
 
 /** @type {Record<string, CompiledRegion[]>} */
 const dimensionRegions = {
@@ -117,6 +126,9 @@ const dimensionRegions = {
 	"minecraft:nether": [],
 	"minecraft:the_end": []
 };
+
+/** @type {Map<string, ActionLedger>} */
+const actionLedger = new Map();
 
 let booted = false;
 
@@ -139,15 +151,43 @@ const normalizeDimensionId = value => {
 };
 
 /**
+ * @returns {number}
+ */
+function getCurrentTick() {
+	return Number(/** @type {any} */ (system).currentTick ?? 0);
+}
+
+/**
+ * @param {Player} player
+ * @returns {ActionLedger}
+ */
+function getLedger(player) {
+	const tick = getCurrentTick();
+	const current = actionLedger.get(player.name);
+
+	if (!current || current.tick !== tick) {
+		const next = {
+			tick,
+			workflows: new Set(),
+			alerted: false
+		};
+		actionLedger.set(player.name, next);
+		return next;
+	}
+
+	return current;
+}
+
+/**
  * @param {Player | Entity | undefined} entity
  * @param {RegionBypass} bypass
  * @returns {boolean}
  */
 const hasBypass = (entity, bypass) => {
-	if (!entity || !bypass) return false;
-	if (entity.typeId !== "minecraft:player") return false;
+	if (!entity || !bypass || entity.typeId !== "minecraft:player")
+		return false;
 
-	const player = /** @type {Player} */ (/** @type {unknown} */ (entity));
+	const player = /** @type {Player} */ (entity);
 
 	if (
 		bypass.operator &&
@@ -187,9 +227,8 @@ const canBypass = (region, entity) => hasBypass(entity, region.bypass);
  * @returns {boolean}
  */
 const isTargetDenied = (filter, targetId) => {
-	if (!filter || !Array.isArray(filter.list) || filter.list.length === 0) {
+	if (!filter || !Array.isArray(filter.list) || filter.list.length === 0)
 		return false;
-	}
 
 	const matched = filter.list.includes(targetId);
 	return filter.type === "whitelist" ? !matched : matched;
@@ -211,6 +250,33 @@ function queueDeniedMessage(player, action) {
 		);
 		player.playSound("note.bass");
 	});
+}
+
+/**
+ * @param {string} kind
+ * @param {...(string | number)} parts
+ * @returns {string}
+ */
+function makeWorkflowKey(kind, ...parts) {
+	return [kind, ...parts].join("|");
+}
+
+/**
+ * @param {Player} player
+ * @param {string} workflowKey
+ * @param {string} action
+ * @returns {void}
+ */
+function notifyDenied(player, workflowKey, action) {
+	const ledger = getLedger(player);
+
+	if (ledger.workflows.has(workflowKey)) return;
+	ledger.workflows.add(workflowKey);
+
+	if (ledger.alerted) return;
+	ledger.alerted = true;
+
+	queueDeniedMessage(player, action);
 }
 
 /**
@@ -349,103 +415,213 @@ const getBestRegion = (location, dimensionId) => {
 
 /**
  * @param {Player} player
- * @param {Vector3} location
- * @param {string} dimensionId
+ * @param {CompiledRegion} region
  * @param {string} targetId
  * @param {RegionTargetFilter | undefined} filter
  * @param {string} action
+ * @param {string} workflowKey
  * @returns {boolean}
  */
 function denyTargetInteraction(
 	player,
-	location,
-	dimensionId,
+	region,
 	targetId,
 	filter,
-	action
+	action,
+	workflowKey
 ) {
-	const region = getBestRegion(location, dimensionId);
-	if (!region) return false;
 	if (canBypass(region, player)) return false;
 	if (!isTargetDenied(filter, targetId)) return false;
 
-	queueDeniedMessage(player, action);
+	notifyDenied(player, workflowKey, action);
 	return true;
 }
 
 /**
+ * @param {unknown} payload
+ * @returns {unknown[]}
+ */
+function collectItemPayloads(payload) {
+	/** @type {unknown[]} */
+	const out = [];
+
+	if (Array.isArray(payload)) {
+		return payload;
+	}
+
+	if (!payload || typeof payload !== "object") {
+		return out;
+	}
+
+	const data = /** @type {any} */ (payload);
+
+	if (Array.isArray(data.items)) out.push(...data.items);
+	if (Array.isArray(data.itemEntities)) out.push(...data.itemEntities);
+
+	for (const key of [
+		"itemEntity",
+		"item",
+		"droppedItem",
+		"itemStack",
+		"stack"
+	]) {
+		if (data[key] != null) out.push(data[key]);
+	}
+
+	return out;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {import("@minecraft/server").ItemStack | undefined}
+ */
+function extractItemStack(value) {
+	if (!value || typeof value !== "object") return undefined;
+
+	const anyValue = /** @type {any} */ (value);
+
+	if (
+		typeof anyValue.clone === "function" &&
+		typeof anyValue.typeId === "string" &&
+		typeof anyValue.amount === "number"
+	) {
+		return /** @type {import("@minecraft/server").ItemStack} */ (anyValue);
+	}
+
+	const stack =
+		anyValue.itemStack ??
+		anyValue.item ??
+		anyValue.droppedItem ??
+		anyValue.stack;
+
+	if (
+		stack &&
+		typeof stack === "object" &&
+		typeof stack.clone === "function" &&
+		typeof stack.typeId === "string" &&
+		typeof stack.amount === "number"
+	) {
+		return /** @type {import("@minecraft/server").ItemStack} */ (stack);
+	}
+
+	const itemComp = anyValue.getComponent?.("minecraft:item");
+	const itemStack = itemComp?.itemStack;
+
+	if (
+		itemStack &&
+		typeof itemStack.clone === "function" &&
+		typeof itemStack.typeId === "string" &&
+		typeof itemStack.amount === "number"
+	) {
+		return /** @type {import("@minecraft/server").ItemStack} */ (itemStack);
+	}
+
+	return undefined;
+}
+
+/**
+ * @param {Container} container
+ * @param {import("@minecraft/server").ItemStack} stack
+ * @returns {boolean}
+ */
+function removeItemStackFromContainer(container, stack) {
+	let remaining = stack.amount;
+
+	for (let slot = 0; slot < container.size && remaining > 0; slot++) {
+		const current = container.getItem(slot);
+		if (!current || current.typeId !== stack.typeId) continue;
+
+		const take = Math.min(current.amount, remaining);
+		current.amount -= take;
+		remaining -= take;
+
+		if (current.amount <= 0) {
+			container.setItem(slot, undefined);
+		} else {
+			container.setItem(slot, current);
+		}
+	}
+
+	return remaining <= 0;
+}
+
+/**
  * @param {Player} player
- * @param {string} itemId
- * @param {number} amount
+ * @param {unknown} payload
  * @returns {void}
  */
-function restoreItemToSelectedSlot(player, itemId, amount) {
-	const inventory = /** @type {any} */ (
+function restorePickedUpItems(player, payload) {
+	const inventory = /** @type {EntityInventoryComponent} */ (
+		player.getComponent("minecraft:inventory")
+	);
+	const container = inventory?.container;
+	if (!container) return;
+
+	for (const raw of collectItemPayloads(payload)) {
+		const stack = extractItemStack(raw);
+		if (!stack) continue;
+
+		const clone = stack.clone();
+
+		if (!removeItemStackFromContainer(container, clone)) {
+			continue;
+		}
+
+		const location = /** @type {any} */ (raw)?.location ?? player.location;
+
+		try {
+			player.dimension.spawnItem(clone, location);
+		} catch {}
+	}
+}
+
+/**
+ * @param {Player} player
+ * @param {unknown} payload
+ * @returns {void}
+ */
+function restoreDroppedItems(player, payload) {
+	const inventory = /** @type {EntityInventoryComponent} */ (
 		player.getComponent("minecraft:inventory")
 	);
 	const container = inventory?.container;
 	if (!container) return;
 
 	const slot = player.selectedSlotIndex;
-	const current = container.getItem(slot);
 
-	if (!current) {
-		const stack = /** @type {any} */ (container.getItem(slot));
-		const restored = stack ?? null;
-		const itemStack = /** @type {any} */ (player.dimension.spawnItem); // keep TS quiet
-		void itemStack;
+	for (const raw of collectItemPayloads(payload)) {
+		if (
+			raw &&
+			typeof raw === "object" &&
+			typeof (/** @type {any} */ (raw).remove) === "function"
+		) {
+			try {
+				/** @type {any} */ (raw).remove();
+			} catch {}
+		}
 
-		/** @type {any} */
-		const restoredStack = current?.clone?.() ?? undefined;
+		const stack = extractItemStack(raw);
+		if (!stack) continue;
 
-		// create from dropped item through caller (handled separately)
-		return;
+		const clone = stack.clone();
+		const current = container.getItem(slot);
+
+		if (!current) {
+			container.setItem(slot, clone);
+			continue;
+		}
+
+		if (current.typeId === clone.typeId) {
+			current.amount = Math.min(
+				current.amount + clone.amount,
+				current.maxAmount
+			);
+			container.setItem(slot, current);
+			continue;
+		}
+
+		container.addItem(clone);
 	}
-}
-
-/**
- * @param {Player} player
- * @param {Entity} itemEntity
- * @returns {boolean}
- */
-function restoreDroppedItemEntity(player, itemEntity) {
-	const itemComponent = /** @type {any} */ (
-		itemEntity.getComponent("minecraft:item")
-	);
-	const stack = itemComponent?.itemStack;
-	if (!stack) return false;
-
-	try {
-		itemEntity.remove();
-	} catch {}
-
-	const inventory = /** @type {any} */ (
-		player.getComponent("minecraft:inventory")
-	);
-	const container = inventory?.container;
-	if (!container) return true;
-
-	const slot = player.selectedSlotIndex;
-	const current = container.getItem(slot);
-	const dropped = stack.clone();
-
-	if (!current) {
-		container.setItem(slot, dropped);
-		return true;
-	}
-
-	if (current.typeId === dropped.typeId) {
-		current.amount = Math.min(
-			current.amount + dropped.amount,
-			current.maxAmount
-		);
-		container.setItem(slot, current);
-		return true;
-	}
-
-	// Fallback: do not overwrite unrelated slot content.
-	container.addItem(dropped);
-	return true;
 }
 
 /**
@@ -503,7 +679,17 @@ world.afterEvents.worldLoad.subscribe(() => {
 
 		if (region.permission.blocks.break === false) {
 			event.cancel = true;
-			queueDeniedMessage(player, "break blocks");
+			notifyDenied(
+				player,
+				makeWorkflowKey(
+					"block.break",
+					block.dimension.id,
+					Math.floor(block.location.x),
+					Math.floor(block.location.y),
+					Math.floor(block.location.z)
+				),
+				"break blocks"
+			);
 		}
 	});
 
@@ -515,21 +701,40 @@ world.afterEvents.worldLoad.subscribe(() => {
 
 		if (region.permission.blocks.place === false) {
 			event.cancel = true;
-			queueDeniedMessage(player, "place blocks");
+			notifyDenied(
+				player,
+				makeWorkflowKey(
+					"block.place",
+					block.dimension.id,
+					Math.floor(block.location.x),
+					Math.floor(block.location.y),
+					Math.floor(block.location.z)
+				),
+				"place blocks"
+			);
 		}
 	});
 
 	world.beforeEvents.playerInteractWithBlock?.subscribe(event => {
 		const { player, block } = event;
+		const region = getBestRegion(block.location, block.dimension.id);
+		if (!region) return;
 
 		if (
 			denyTargetInteraction(
 				player,
-				block.location,
-				block.dimension.id,
+				region,
 				block.typeId,
 				region.permission.blocks.interact,
-				"interact with this block"
+				"interact with this block",
+				makeWorkflowKey(
+					"block.interact",
+					block.dimension.id,
+					Math.floor(block.location.x),
+					Math.floor(block.location.y),
+					Math.floor(block.location.z),
+					block.typeId
+				)
 			)
 		) {
 			event.cancel = true;
@@ -542,14 +747,24 @@ world.afterEvents.worldLoad.subscribe(() => {
 			return;
 
 		const player = /** @type {Player} */ (source);
+		const region = getBestRegion(player.location, player.dimension.id);
+		if (!region) return;
+
 		if (
 			denyTargetInteraction(
 				player,
-				player.location,
-				player.dimension.id,
+				region,
 				itemStack.typeId,
 				region.permission.items.interact,
-				"use this item"
+				"use this item",
+				makeWorkflowKey(
+					"item.use",
+					player.dimension.id,
+					Math.floor(player.location.x),
+					Math.floor(player.location.y),
+					Math.floor(player.location.z),
+					itemStack.typeId
+				)
 			)
 		) {
 			event.cancel = true;
@@ -566,44 +781,51 @@ world.afterEvents.worldLoad.subscribe(() => {
 			isTargetDenied(region.permission.entities.interact, target.typeId)
 		) {
 			event.cancel = true;
-			queueDeniedMessage(player, "interact with this entity");
+			notifyDenied(
+				player,
+				makeWorkflowKey(
+					"entity.interact",
+					target.dimension.id,
+					Math.floor(target.location.x),
+					Math.floor(target.location.y),
+					Math.floor(target.location.z),
+					target.typeId
+				),
+				"interact with this entity"
+			);
 		}
 	});
 
-	world.beforeEvents.entityItemPickup?.subscribe(event => {
-		const { entity, item } = event;
-		const region = getBestRegion(item.location, item.dimension.id);
-		if (!region) return;
+	world.afterEvents.entityItemPickup?.subscribe(event => {
+		const payload = /** @type {any} */ (event);
+		const entity = payload.entity;
+		if (!entity || entity.typeId !== "minecraft:player") return;
 
-		if (
-			entity.typeId === "minecraft:player" &&
-			canBypass(region, /** @type {Player} */ (entity))
-		) {
-			return;
-		}
+		const player = /** @type {Player} */ (entity);
+		const region = getBestRegion(player.location, player.dimension.id);
+		if (!region) return;
+		if (canBypass(region, player)) return;
 
 		if (region.permission.items.pickup === false) {
-			event.cancel = true;
+			restorePickedUpItems(
+				player,
+				payload.items ?? payload.itemStack ?? payload.item ?? payload
+			);
 		}
 	});
 
-	world.beforeEvents.entityHurt.subscribe(event => {
+	world.beforeEvents.entityHurt?.subscribe(event => {
 		const { hurtEntity, damageSource } = event;
-
 		if (!hurtEntity) return;
 
 		const region = getBestRegion(
 			hurtEntity.location,
 			hurtEntity.dimension.id
 		);
-
-		if (!region || region.permission.pvp !== false) {
-			return;
-		}
+		if (!region || region.permission.pvp !== false) return;
 
 		const attacker = damageSource?.damagingEntity;
 
-		// Operator / bypass hanya berlaku jika sumber damage adalah player.
 		if (
 			attacker?.typeId === "minecraft:player" &&
 			canBypass(region, /** @type {Player} */ (attacker))
@@ -614,8 +836,15 @@ world.afterEvents.worldLoad.subscribe(() => {
 		event.cancel = true;
 
 		if (attacker?.typeId === "minecraft:player") {
-			queueDeniedMessage(
+			notifyDenied(
 				/** @type {Player} */ (attacker),
+				makeWorkflowKey(
+					"entity.hurt",
+					hurtEntity.dimension.id,
+					Math.floor(hurtEntity.location.x),
+					Math.floor(hurtEntity.location.y),
+					Math.floor(hurtEntity.location.z)
+				),
 				"damage entities"
 			);
 		}
@@ -634,9 +863,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 
 		for (const block of impactedBlocks) {
 			const region = getBestRegion(block.location, block.dimension.id);
-			if (region && region.permission.explosion === false) {
-				continue;
-			}
+			if (region && region.permission.explosion === false) continue;
 			filtered.push(block);
 		}
 
@@ -646,7 +873,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.afterEvents.entityItemDrop?.subscribe(event => {
-		const { entity, items } = event;
+		const payload = /** @type {any} */ (event);
+		const entity = payload.entity;
 		if (!entity || entity.typeId !== "minecraft:player") return;
 
 		const player = /** @type {Player} */ (entity);
@@ -655,11 +883,25 @@ world.afterEvents.worldLoad.subscribe(() => {
 		if (canBypass(region, player)) return;
 
 		if (region.permission.items.drop === false) {
-			const droppedItems = Array.isArray(items) ? items : [];
-			for (const itemEntity of droppedItems) {
-				restoreDroppedItemEntity(player, itemEntity);
-			}
-			queueDeniedMessage(player, "drop items");
+			restoreDroppedItems(
+				player,
+				payload.items ??
+					payload.itemEntity ??
+					payload.item ??
+					payload.droppedItem ??
+					payload
+			);
+			notifyDenied(
+				player,
+				makeWorkflowKey(
+					"item.drop",
+					player.dimension.id,
+					Math.floor(player.location.x),
+					Math.floor(player.location.y),
+					Math.floor(player.location.z)
+				),
+				"drop items"
+			);
 		}
 	});
 
