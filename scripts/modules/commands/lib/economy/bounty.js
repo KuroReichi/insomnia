@@ -21,7 +21,7 @@ function getBounty(name) {
 registerCommand({
 	name: "bounty",
 	description: "Manage player bounty.",
-	run: function (player, ctx) {
+	run: function (player) {
 		helpCommand(player, { query: "bounty" });
 	},
 	children: [

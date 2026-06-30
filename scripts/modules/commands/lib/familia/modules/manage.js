@@ -170,7 +170,12 @@ function saveIndex(list) {
  */
 function getAllFamilias() {
 	return getIndex()
-		.map(uid => /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)))
+		.map(
+			uid =>
+				/** @type {FamiliaDataStore | undefined} */ (
+					database.get(uid, FAMILY_DB_KEY)
+				)
+		)
 		.filter(Boolean)
 		.map(family => /** @type {FamiliaDataStore} */ (family));
 }
@@ -204,7 +209,11 @@ function findFamilia(query) {
  * @returns {FamiliaDataStore | null}
  */
 function findFamilyByUid(uid) {
-	return /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)) ?? null;
+	return (
+		/** @type {FamiliaDataStore | undefined} */ (
+			database.get(uid, FAMILY_DB_KEY)
+		) ?? null
+	);
 }
 
 /**
@@ -212,7 +221,11 @@ function findFamilyByUid(uid) {
  * @returns {FamiliaPlayer}
  */
 function getPlayerState(player) {
-	return /** @type {FamiliaPlayer | undefined} */ (database.get("familia", player.name)) ?? { haveFamilia: false, data: null };
+	return (
+		/** @type {FamiliaPlayer | undefined} */ (
+			database.get("familia", player.name)
+		) ?? { haveFamilia: false, data: null }
+	);
 }
 
 /**
@@ -238,7 +251,10 @@ function saveFamily(family) {
 	family.description ??= "";
 	family.motd ??= "";
 	family.home ??= null;
-	family.power = Object.values(family.members).reduce((sum, member) => sum + Number(member?.power ?? 0), 0);
+	family.power = Object.values(family.members).reduce(
+		(sum, member) => sum + Number(member?.power ?? 0),
+		0
+	);
 	family.name ??= { abbreviation: "", fullName: "" };
 
 	database.set(family.uid, family, FAMILY_DB_KEY, true);
@@ -265,7 +281,8 @@ function deleteFamily(uid) {
  */
 function canManage(player, family, minRank = "officer") {
 	const rank = family.members?.[player.name]?.rank ?? null;
-	const score = RANK_SCORE[/** @type {keyof typeof RANK_SCORE} */ (rank)] ?? 0;
+	const score =
+		RANK_SCORE[/** @type {keyof typeof RANK_SCORE} */ (rank)] ?? 0;
 	return score >= RANK_SCORE[minRank];
 }
 
@@ -275,17 +292,11 @@ function canManage(player, family, minRank = "officer") {
  * @returns {boolean}
  */
 function hasMember(family, playerName) {
-	return Boolean(Object.keys(family.members ?? {}).find(name => lower(name) === lower(playerName)));
-}
-
-/**
- * @param {FamiliaDataStore} family
- * @param {string} playerName
- * @returns {FamiliaData | null}
- */
-function getMember(family, playerName) {
-	const key = Object.keys(family.members ?? {}).find(name => lower(name) === lower(playerName));
-	return key ? (family.members[key] ?? null) : null;
+	return Boolean(
+		Object.keys(family.members ?? {}).find(
+			name => lower(name) === lower(playerName)
+		)
+	);
 }
 
 /**
@@ -294,7 +305,11 @@ function getMember(family, playerName) {
  * @returns {string | null}
  */
 function getMemberKey(family, playerName) {
-	return Object.keys(family.members ?? {}).find(name => lower(name) === lower(playerName)) ?? null;
+	return (
+		Object.keys(family.members ?? {}).find(
+			name => lower(name) === lower(playerName)
+		) ?? null
+	);
 }
 
 /**
@@ -304,32 +319,12 @@ function getMemberKey(family, playerName) {
  */
 function clearPlayerStateFromFamily(family, player) {
 	delete family.members[player.name];
-	database.set("familia", { haveFamilia: false, data: null }, player.name, true);
-}
-
-/**
- * @param {Player} player
- * @param {FamiliaDataStore} family
- * @param {"member" | "officer" | "co-leader" | "agent"} rank
- * @param {string} title
- * @returns {FamiliaData}
- */
-function joinFamily(player, family, rank = "member", title = "") {
-	/** @type {FamiliaData} */
-	const member = {
-		uid: family.uid,
-		rank,
-		title,
-		power: 0,
-		since: Date.now()
-	};
-
-	family.members[player.name] = member;
-	family.requests = (family.requests ?? []).filter(name => lower(name) !== lower(player.name));
-	family.invites = (family.invites ?? []).filter(name => lower(name) !== lower(player.name));
-	saveFamily(family);
-	database.set("familia", { haveFamilia: true, data: member }, player.name, true);
-	return member;
+	database.set(
+		"familia",
+		{ haveFamilia: false, data: null },
+		player.name,
+		true
+	);
 }
 
 /**
@@ -341,10 +336,24 @@ function joinFamily(player, family, rank = "member", title = "") {
 function canTargetBeManaged(player, family, target) {
 	if (!hasMember(family, target.name)) return false;
 
-	const actor = RANK_SCORE[/** @type {keyof typeof RANK_SCORE} */ (family.members?.[player.name]?.rank ?? "member")] ?? 0;
-	const targetRank = RANK_SCORE[/** @type {keyof typeof RANK_SCORE} */ (family.members?.[target.name]?.rank ?? "member")] ?? 0;
+	const actor =
+		RANK_SCORE[
+			/** @type {keyof typeof RANK_SCORE} */ (
+				family.members?.[player.name]?.rank ?? "member"
+			)
+		] ?? 0;
+	const targetRank =
+		RANK_SCORE[
+			/** @type {keyof typeof RANK_SCORE} */ (
+				family.members?.[target.name]?.rank ?? "member"
+			)
+		] ?? 0;
 
-	return actor > targetRank || target.name === player.name || family.members?.[player.name]?.rank === "agent";
+	return (
+		actor > targetRank ||
+		target.name === player.name ||
+		family.members?.[player.name]?.rank === "agent"
+	);
 }
 
 /**
@@ -376,13 +385,19 @@ export function inviteFamilia(player, context) {
 	}
 
 	family.invites ??= [];
-	if (!family.invites.some(name => lower(name) === lower(context.player.name))) {
+	if (
+		!family.invites.some(name => lower(name) === lower(context.player.name))
+	) {
 		family.invites.push(context.player.name);
 		saveFamily(family);
 	}
 
-	player.sendMessage(info(`Successfully invited §e${context.player.name}§a to the Familia.`));
-	context.player.sendMessage(warn(`You have been invited to join §a${player.name}'s§e Familia.`));
+	player.sendMessage(
+		info(`Successfully invited §e${context.player.name}§a to the Familia.`)
+	);
+	context.player.sendMessage(
+		warn(`You have been invited to join §a${player.name}'s§e Familia.`)
+	);
 }
 
 /**
@@ -421,8 +436,12 @@ export function kickFamilia(player, context) {
 	clearPlayerStateFromFamily(family, context.player);
 	saveFamily(family);
 
-	player.sendMessage(warn(`${context.player.name} has been kicked from the Familia.`));
-	context.player.sendMessage(fail(`You have been kicked from ${player.name}'s Familia.`));
+	player.sendMessage(
+		warn(`${context.player.name} has been kicked from the Familia.`)
+	);
+	context.player.sendMessage(
+		fail(`You have been kicked from ${player.name}'s Familia.`)
+	);
 }
 
 /**
@@ -454,17 +473,29 @@ export function setFamiliaRank(player, context) {
 		return;
 	}
 
-	const actorScore = RANK_SCORE[/** @type {keyof typeof RANK_SCORE} */ (family.members[player.name]?.rank ?? "member")] ?? 0;
+	const actorScore =
+		RANK_SCORE[
+			/** @type {keyof typeof RANK_SCORE} */ (
+				family.members[player.name]?.rank ?? "member"
+			)
+		] ?? 0;
 	const rankScore = RANK_SCORE[context.rank];
 
-	if (rankScore > actorScore && family.members[player.name]?.rank !== "agent") {
+	if (
+		rankScore > actorScore &&
+		family.members[player.name]?.rank !== "agent"
+	) {
 		failNow(player, "You cannot assign a rank higher than yours.");
 		return;
 	}
 
 	family.members[key].rank = context.rank;
 	saveFamily(family);
-	player.sendMessage(info(`Updated §e${context.player.name}'s§a rank to §e${context.rank}§a.`));
+	player.sendMessage(
+		info(
+			`Updated §e${context.player.name}'s§a rank to §e${context.rank}§a.`
+		)
+	);
 }
 
 /**
@@ -496,8 +527,16 @@ export function promoteFamilia(player, context) {
 		return;
 	}
 
-	const order = /** @type {const} */ (["member", "officer", "co-leader", "agent"]);
-	const currentRank = /** @type {"member" | "officer" | "co-leader" | "agent"} */ (family.members[key].rank ?? "member");
+	const order = /** @type {const} */ ([
+		"member",
+		"officer",
+		"co-leader",
+		"agent"
+	]);
+	const currentRank =
+		/** @type {"member" | "officer" | "co-leader" | "agent"} */ (
+			family.members[key].rank ?? "member"
+		);
 	const index = order.indexOf(currentRank);
 
 	if (index >= order.length - 1) {
@@ -507,7 +546,9 @@ export function promoteFamilia(player, context) {
 
 	family.members[key].rank = order[index + 1];
 	saveFamily(family);
-	player.sendMessage(info(`Successfully promoted §e${context.player.name}§a.`));
+	player.sendMessage(
+		info(`Successfully promoted §e${context.player.name}§a.`)
+	);
 }
 
 /**
@@ -539,8 +580,16 @@ export function demoteFamilia(player, context) {
 		return;
 	}
 
-	const order = /** @type {const} */ (["member", "officer", "co-leader", "agent"]);
-	const currentRank = /** @type {"member" | "officer" | "co-leader" | "agent"} */ (family.members[key].rank ?? "member");
+	const order = /** @type {const} */ ([
+		"member",
+		"officer",
+		"co-leader",
+		"agent"
+	]);
+	const currentRank =
+		/** @type {"member" | "officer" | "co-leader" | "agent"} */ (
+			family.members[key].rank ?? "member"
+		);
 	const index = order.indexOf(currentRank);
 
 	if (index <= 0) {
@@ -584,7 +633,11 @@ export function setFamiliaTitle(player, context) {
 
 	family.members[key].title = clean(context.title).slice(0, 64);
 	saveFamily(family);
-	player.sendMessage(info(`Assigned the title '§r${family.members[key].title}§a' to §e${context.player.name}§a.`));
+	player.sendMessage(
+		info(
+			`Assigned the title '§r${family.members[key].title}§a' to §e${context.player.name}§a.`
+		)
+	);
 }
 
 /**
@@ -624,7 +677,9 @@ export function setFamiliaAbbreviation(player, context) {
 
 	family.name.abbreviation = name;
 	saveFamily(family);
-	player.sendMessage(info(`Familia abbreviation has been updated to: §e${name}`));
+	player.sendMessage(
+		info(`Familia abbreviation has been updated to: §e${name}`)
+	);
 }
 
 /**
@@ -749,7 +804,11 @@ export function disbandFamilia(player, context) {
 	}
 
 	if (context.confirm !== "confirm") {
-		player.sendMessage(warn("Are you sure you want to disband the Familia? Type §c/familia disband confirm§e to proceed."));
+		player.sendMessage(
+			warn(
+				"Are you sure you want to disband the Familia? Type §c!familia disband confirm§e to proceed."
+			)
+		);
 		return;
 	}
 

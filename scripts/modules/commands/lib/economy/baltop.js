@@ -130,7 +130,7 @@ registerCommand({
 		}
 
 		const currency = configs.modules.economy.currency;
-		const lines = ["§6§lBaltop§r"];
+		const lines = ["§6----- §eShowing Top 10 §6-----§r"];
 
 		for (const [index, entry] of entries.entries()) {
 			const rank = index + 1;

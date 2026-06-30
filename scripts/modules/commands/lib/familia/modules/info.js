@@ -59,9 +59,10 @@ const FAMILY_DB_KEY = "familia";
 
 /**
  * @param {string} value
- * @returns {string}
+ * @returns {atring}
  */
 function clean(value) {
+	/** @type {atring} */
 	return String(value ?? "").trim();
 }
 
@@ -257,6 +258,7 @@ function buildInfoLines(family) {
  * @returns {void}
  */
 export function showFamiliaInfo(player, context = {}) {
+	/** @type {string} */
 	const query = clean(context.faction);
 	const family = query ? findFamilia(query) : getPlayerFamily(player);
 

@@ -93,7 +93,12 @@ function makeUid() {
  * @returns {value is FamiliaPlayer}
  */
 function isFamiliaPlayer(value) {
-	return Boolean(value && typeof value === "object" && "haveFamilia" in value && "data" in value);
+	return Boolean(
+		value &&
+		typeof value === "object" &&
+		"haveFamilia" in value &&
+		"data" in value
+	);
 }
 
 /**
@@ -140,7 +145,12 @@ function saveIndex(list) {
  */
 function getAllFamilias() {
 	return getIndex()
-		.map(uid => /** @type {FamiliaDataStore | undefined} */ (database.get(uid, FAMILY_DB_KEY)))
+		.map(
+			uid =>
+				/** @type {FamiliaDataStore | undefined} */ (
+					database.get(uid, FAMILY_DB_KEY)
+				)
+		)
 		.filter(Boolean)
 		.map(family => /** @type {FamiliaDataStore} */ (family));
 }
@@ -184,7 +194,9 @@ function failNow(player, message) {
  * @returns {FamiliaPlayer}
  */
 function getPlayerState(player) {
-	const state = /** @type {FamiliaPlayer | undefined} */ (database.get("familia", player.name));
+	const state = /** @type {FamiliaPlayer | undefined} */ (
+		database.get("familia", player.name)
+	);
 	return state ?? { haveFamilia: false, data: null };
 }
 
@@ -218,7 +230,10 @@ function saveFamily(family) {
 	family.description ??= "";
 	family.motd ??= "";
 	family.home ??= null;
-	family.power = Object.values(family.members).reduce((sum, member) => sum + Number(member?.power ?? 0), 0);
+	family.power = Object.values(family.members).reduce(
+		(sum, member) => sum + Number(member?.power ?? 0),
+		0
+	);
 	family.name ??= { abbreviation: "", fullName: "" };
 
 	database.set(family.uid, family, FAMILY_DB_KEY, true);
@@ -246,8 +261,12 @@ function joinFamily(player, family, rank = "member", title = "") {
 	};
 
 	family.members[player.name] = member;
-	family.requests = (family.requests ?? []).filter(name => lower(name) !== lower(player.name));
-	family.invites = (family.invites ?? []).filter(name => lower(name) !== lower(player.name));
+	family.requests = (family.requests ?? []).filter(
+		name => lower(name) !== lower(player.name)
+	);
+	family.invites = (family.invites ?? []).filter(
+		name => lower(name) !== lower(player.name)
+	);
 	saveFamily(family);
 	setPlayerState(player, { haveFamilia: true, data: member });
 	return member;
@@ -264,7 +283,10 @@ export function createFamilia(player, context) {
 	const full = clean(context.full);
 
 	if (!abbreviation || !full) {
-		failNow(player, "Invalid or missing arguments. Type §e/familia help§c for proper command usage.");
+		failNow(
+			player,
+			"Invalid or missing arguments. Type §e!familia help§c for proper command usage."
+		);
 		return;
 	}
 
@@ -285,7 +307,10 @@ export function createFamilia(player, context) {
 
 	const clash = findFamilia(abbreviation) ?? findFamilia(full);
 	if (clash) {
-		failNow(player, "A Familia with the same abbreviation or full name already exists.");
+		failNow(
+			player,
+			"A Familia with the same abbreviation or full name already exists."
+		);
 		return;
 	}
 
@@ -311,5 +336,7 @@ export function createFamilia(player, context) {
 	};
 
 	joinFamily(player, family, "agent", "Founder");
-	player.sendMessage(info(`Successfully founded the Familia: §e${full} §7[${abbreviation}]`));
+	player.sendMessage(
+		info(`Successfully founded the Familia: §e${full} §7[${abbreviation}]`)
+	);
 }

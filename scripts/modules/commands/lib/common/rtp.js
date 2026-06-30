@@ -174,15 +174,6 @@ function getRtpProfile(dimensionId) {
 }
 
 /**
- * @param {number} min
- * @param {number} max
- * @returns {number}
- */
-function randInt(min, max) {
-	return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-/**
  * Random point inside an annulus, efficiently.
  * @param {number} minRadius
  * @param {number} maxRadius
