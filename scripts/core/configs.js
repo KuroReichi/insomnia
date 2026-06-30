@@ -105,7 +105,7 @@ export const configs = {
 					bypass: {
 						operator: false,
 						tags: [],
-						gamertags: ["KuroReichii", "HikariKurumi"]
+						gamertags: ["KuroReichii"]
 					},
 					type: "radius",
 					value: {
@@ -139,8 +139,8 @@ export const configs = {
 							}
 						},
 						items: {
-							pickup: false,
-							drop: false,
+							pickup: true,
+							drop: true,
 							interact: {
 								type: "whitelist",
 								/** @type {ItemTypeIDs[]} */

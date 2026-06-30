@@ -9,7 +9,7 @@ import { valuable } from "./configs.js";
 
 /**
  * @typedef {Object} ValuableItem
- * @property {BlockTypeIDs} id
+ * @property {string} id
  * @property {string} category
  * @property {number} price
  */
@@ -19,13 +19,24 @@ import { valuable } from "./configs.js";
  * @property {number} amount
  * @property {number} timer
  * @property {Player} player
+ * @property {"break" | "place"} type
  */
 
-const REWARD_DELAY = 20 * 5;
+const REWARD_DELAY = 20 * 2;
 const currency = configs.modules.economy.currency;
+const timezone = configs.modules.realtime.timezone ?? "Asia/Jakarta";
+
+const PLACE_MIN_PERCENT = 32.71;
+const PLACE_MAX_PERCENT = 44.39;
 
 /** @type {Map<string, PendingReward>} */
 const pendingRewards = new Map();
+
+function getTodayKey() {
+	return new Intl.DateTimeFormat("en-GB", {
+		timeZone: timezone
+	}).format(new Date());
+}
 
 /**
  * @param {string} blockId
@@ -47,10 +58,82 @@ function getMoney(playerName) {
  * @param {string} playerName
  * @param {number} amount
  */
+function setMoney(playerName, amount) {
+	database.set("money", Math.max(0, Math.floor(amount)), playerName);
+}
+
+/**
+ * @param {string} playerName
+ * @param {number} amount
+ */
 function addMoney(playerName, amount) {
 	if (amount <= 0) return;
+	setMoney(playerName, getMoney(playerName) + amount);
+}
 
-	database.set("money", getMoney(playerName) + amount, playerName);
+/**
+ * @param {string} playerName
+ * @param {number} amount
+ */
+function takeMoney(playerName, amount) {
+	if (amount <= 0) return;
+	setMoney(playerName, getMoney(playerName) - amount);
+}
+
+/**
+ * @param {string} playerName
+ * @param {"break" | "place"} type
+ * @param {number} amount
+ */
+function addDailyStat(playerName, type, amount) {
+	if (amount <= 0) return;
+
+	const date = getTodayKey();
+	const key = `blockStats:${type}`;
+
+	/** @type {Record<string, number>} */
+	const stats = database.get(key, playerName) ?? {};
+	stats[date] = Number(stats[date] ?? 0) + amount;
+
+	database.set(key, stats, playerName);
+}
+
+/**
+ * @param {Player} player
+ * @param {number} amount
+ * @param {"break" | "place"} type
+ */
+function queueTransaction(player, amount, type) {
+	const playerName = player.name;
+	let pending = pendingRewards.get(playerName);
+
+	if (!pending) {
+		pending = {
+			amount: 0,
+			timer: 0,
+			player,
+			type
+		};
+
+		pendingRewards.set(playerName, pending);
+	}
+
+	pending.amount += amount;
+	pending.player = player;
+	pending.type = type;
+
+	system.clearRun(pending.timer);
+
+	const sign = pending.type === "break" ? "+" : "-";
+	const absPending = Math.abs(pending.amount);
+
+	player.onScreenDisplay.setActionBar(
+		`§e${sign}${currency}${amount} §7(§6${sign}${currency}${absPending}§7)`
+	);
+
+	pending.timer = system.runTimeout(() => {
+		flushPending(playerName);
+	}, REWARD_DELAY);
 }
 
 /**
@@ -60,50 +143,37 @@ function flushPending(playerName) {
 	const pending = pendingRewards.get(playerName);
 	if (!pending) return;
 
-	addMoney(playerName, pending.amount);
+	if (pending.type === "break") {
+		addMoney(playerName, pending.amount);
+	} else {
+		takeMoney(playerName, pending.amount);
+	}
 
 	if (pending.player.isValid) {
+		const sign = pending.type === "break" ? "+" : "-";
 		pending.player.onScreenDisplay.setActionBar(
-			`§a+${currency}${pending.amount}`
+			`§a${sign}${currency}${pending.amount}`
 		);
 
-		pending.player.runCommand("playsound random.levelup @s ~~~ 1 3");
+		if (pending.type === "break") {
+			pending.player.runCommand("playsound random.levelup @s ~~~ 1 3");
+		} else {
+			pending.player.runCommand("playsound random.glass @s ~~~ 1 0.5");
+		}
 	}
 
 	pendingRewards.delete(playerName);
 }
 
 /**
- * @param {Player} player
- * @param {number} reward
+ * @param {number} price
+ * @returns {number}
  */
-function queueReward(player, reward) {
-	const playerName = player.name;
-
-	let pending = pendingRewards.get(playerName);
-
-	if (!pending) {
-		pending = {
-			amount: 0,
-			timer: 0,
-			player
-		};
-
-		pendingRewards.set(playerName, pending);
-	}
-
-	pending.amount += reward;
-	pending.player = player;
-
-	system.clearRun(pending.timer);
-
-	player.onScreenDisplay.setActionBar(
-		`§a+${currency}${reward} §7(§e${currency}${pending.amount}§7)`
-	);
-
-	pending.timer = system.runTimeout(() => {
-		flushPending(playerName);
-	}, REWARD_DELAY);
+function getRandomPlacePenalty(price) {
+	const percent =
+		PLACE_MIN_PERCENT +
+		Math.random() * (PLACE_MAX_PERCENT - PLACE_MIN_PERCENT);
+	return Math.max(1, Math.floor(price * (percent / 100)));
 }
 
 world.afterEvents.playerBreakBlock.subscribe(event => {
@@ -116,5 +186,22 @@ world.afterEvents.playerBreakBlock.subscribe(event => {
 	const item = getValuable(blockId);
 	if (!item) return;
 
-	queueReward(player, item.price);
+	addDailyStat(player.name, "break", 1);
+	queueTransaction(player, item.price, "break");
+});
+
+world.afterEvents.playerPlaceBlock.subscribe(event => {
+	const player = event.player;
+	if (!player.isValid) return;
+
+	const blockId =
+		event.block?.typeId ?? event.block.permutation.type.id ?? "";
+
+	const item = getValuable(blockId);
+	if (!item) return;
+
+	addDailyStat(player.name, "place", 1);
+
+	const penalty = getRandomPlacePenalty(item.price);
+	queueTransaction(player, penalty, "place");
 });
