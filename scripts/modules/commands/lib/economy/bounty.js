@@ -42,7 +42,7 @@ registerCommand({
 								const targetName = args.player;
 								const amount = Math.floor(args.amount);
 
-								if (player.name === targtName) {
+								if (player.name === targetName) {
 									player.sendMessage({
 										text: "§l§6> §r§cYou cannot add bounty to yourself."
 									});
