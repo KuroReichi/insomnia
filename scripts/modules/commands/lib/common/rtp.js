@@ -1,22 +1,36 @@
 import { system, world } from "@minecraft/server";
 import { registerCommand } from "../../core/registry/index.js";
 
+/**
+ * @typedef {import("@minecraft/server").Player} Player
+ * @typedef {import("@minecraft/server").Dimension} Dimension
+ * @typedef {{x: number, y: number, z: number}} Vec3
+ * @typedef {{x: number, z: number}} Vec2
+ * @typedef {{x: number, z: number}} Origin2D
+ */
+
+/**
+ * @typedef {Object} RtpProfile
+ * @property {number} minDistance
+ * @property {number} maxDistance
+ * @property {number} topY
+ * @property {number} bottomY
+ * @property {(player: Player) => Origin2D} origin
+ */
+
 /** @type {Map<string, boolean>} */
 const rtpLock = new Map();
 
-const MIN_RADIUS = 251;
-const MAX_RADIUS = 500;
-const TOP_Y = 319;
-const BOTTOM_Y = -64;
-const LOAD_DELAY_TICKS = 5;
+const CHUNK_LOAD_DELAY_TICKS = 5;
+const COUNTDOWN_SECONDS = 5;
 const MAX_ATTEMPTS = 20;
+
+const WATER_BLOCKS = new Set(["minecraft:water", "minecraft:flowing_water"]);
 
 const UNSAFE_BLOCKS = new Set([
 	"minecraft:air",
 	"minecraft:cave_air",
 	"minecraft:void_air",
-	"minecraft:water",
-	"minecraft:flowing_water",
 	"minecraft:lava",
 	"minecraft:flowing_lava",
 	"minecraft:fire",
@@ -67,45 +81,79 @@ const UNSAFE_BLOCKS = new Set([
 	"minecraft:portal"
 ]);
 
-/**
- * @param {number} min
- * @param {number} max
- * @returns {number}
- */
-function randInt(min, max) {
-	return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+const UNSAFE_PATTERNS = [
+	"door",
+	"trapdoor",
+	"button",
+	"pressure_plate",
+	"sign",
+	"hanging_sign",
+	"banner",
+	"torch",
+	"rail",
+	"vine",
+	"ladder",
+	"fence_gate",
+	"crop",
+	"sapling",
+	"flower",
+	"mushroom",
+	"coral",
+	"bush",
+	"leaf",
+	"roots",
+	"kelp",
+	"seagrass",
+	"dripleaf",
+	"candle",
+	"cake",
+	"bed",
+	"spawner",
+	"portal",
+	"slab",
+	"stairs",
+	"wall",
+	"pane",
+	"fence",
+	"chain",
+	"bars",
+	"grate",
+	"lantern"
+];
 
-/**
- * @returns {{x: number, z: number}}
- */
-function randomXZ() {
-	while (true) {
-		const x = randInt(-MAX_RADIUS, MAX_RADIUS);
-		const z = randInt(-MAX_RADIUS, MAX_RADIUS);
-
-		if (Math.max(Math.abs(x), Math.abs(z)) < MIN_RADIUS) continue;
-		return { x, z };
+/** @type {Record<string, RtpProfile>} */
+const RTP_PROFILES = {
+	"minecraft:overworld": {
+		minDistance: 251,
+		maxDistance: 1000,
+		topY: 319,
+		bottomY: -64,
+		origin: () => {
+			const spawn = world.getDefaultSpawnLocation();
+			return {
+				x: Math.floor(Number(spawn?.x ?? 0)),
+				z: Math.floor(Number(spawn?.z ?? 0))
+			};
+		}
+	},
+	"minecraft:nether": {
+		minDistance: 150,
+		maxDistance: 600,
+		topY: 123,
+		bottomY: 4,
+		origin: player => ({
+			x: Math.floor(Number(player.location.x ?? 0)),
+			z: Math.floor(Number(player.location.z ?? 0))
+		})
+	},
+	"minecraft:the_end": {
+		minDistance: 500,
+		maxDistance: 3000,
+		topY: 319,
+		bottomY: 0,
+		origin: () => ({ x: 0, z: 0 })
 	}
-}
-
-/**
- * @returns {{x: number, y: number, z: number}}
- */
-function getWorldSpawn() {
-	const anyWorld = /** @type {any} */ (world);
-
-	if (typeof anyWorld.getDefaultSpawnLocation === "function") {
-		const spawn = anyWorld.getDefaultSpawnLocation();
-		return {
-			x: Math.floor(Number(spawn?.x ?? 0)),
-			y: Math.floor(Number(spawn?.y ?? 0)),
-			z: Math.floor(Number(spawn?.z ?? 0))
-		};
-	}
-
-	return { x: 0, y: 0, z: 0 };
-}
+};
 
 /**
  * @param {string} value
@@ -118,56 +166,62 @@ function safeId(value) {
 }
 
 /**
+ * @param {string} dimensionId
+ * @returns {RtpProfile}
+ */
+function getRtpProfile(dimensionId) {
+	return RTP_PROFILES[dimensionId] ?? RTP_PROFILES["minecraft:overworld"];
+}
+
+/**
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
+function randInt(min, max) {
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/**
+ * Random point inside an annulus, efficiently.
+ * @param {number} minRadius
+ * @param {number} maxRadius
+ * @returns {Vec2}
+ */
+function randomXZ(minRadius, maxRadius) {
+	const min2 = minRadius * minRadius;
+	const max2 = maxRadius * maxRadius;
+	const radius = Math.sqrt(Math.random() * (max2 - min2) + min2);
+	const angle = Math.random() * Math.PI * 2;
+
+	return {
+		x: Math.round(Math.cos(angle) * radius),
+		z: Math.round(Math.sin(angle) * radius)
+	};
+}
+
+/**
  * @param {string} blockId
  * @returns {boolean}
  */
 function isUnsafeBlockId(blockId) {
 	if (!blockId) return true;
 	if (UNSAFE_BLOCKS.has(blockId)) return true;
+	if (WATER_BLOCKS.has(blockId)) return true;
 
-	if (
-		blockId.includes("door") ||
-		blockId.includes("trapdoor") ||
-		blockId.includes("button") ||
-		blockId.includes("pressure_plate") ||
-		blockId.includes("sign") ||
-		blockId.includes("hanging_sign") ||
-		blockId.includes("banner") ||
-		blockId.includes("torch") ||
-		blockId.includes("rail") ||
-		blockId.includes("vine") ||
-		blockId.includes("ladder") ||
-		blockId.includes("fence_gate") ||
-		blockId.includes("crop") ||
-		blockId.includes("sapling") ||
-		blockId.includes("flower") ||
-		blockId.includes("mushroom") ||
-		blockId.includes("coral") ||
-		blockId.includes("bush") ||
-		blockId.includes("leaf") ||
-		blockId.includes("roots") ||
-		blockId.includes("kelp") ||
-		blockId.includes("seagrass") ||
-		blockId.includes("dripleaf") ||
-		blockId.includes("candle") ||
-		blockId.includes("cake") ||
-		blockId.includes("bed") ||
-		blockId.includes("spawner") ||
-		blockId.includes("portal") ||
-		blockId.includes("slab") ||
-		blockId.includes("stairs") ||
-		blockId.includes("wall") ||
-		blockId.includes("pane") ||
-		blockId.includes("fence") ||
-		blockId.includes("chain") ||
-		blockId.includes("bars") ||
-		blockId.includes("grate") ||
-		blockId.includes("lantern")
-	) {
-		return true;
+	for (const pattern of UNSAFE_PATTERNS) {
+		if (blockId.includes(pattern)) return true;
 	}
 
 	return false;
+}
+
+/**
+ * @param {string} blockId
+ * @returns {boolean}
+ */
+function isWaterBlockId(blockId) {
+	return WATER_BLOCKS.has(blockId);
 }
 
 /**
@@ -190,8 +244,8 @@ function isValidStandBlock(block) {
 }
 
 /**
- * @param {import("@minecraft/server").Dimension} dimension
- * @param {{x: number, y: number, z: number}} pos
+ * @param {Dimension} dimension
+ * @param {Vec3} pos
  * @returns {boolean}
  */
 function isAirLike(dimension, pos) {
@@ -199,7 +253,8 @@ function isAirLike(dimension, pos) {
 	if (!block) return true;
 
 	const typeId = block.typeId ?? "";
-	if (!typeId || isUnsafeBlockId(typeId)) return true;
+	if (!typeId) return true;
+	if (isUnsafeBlockId(typeId)) return true;
 
 	/** @type {any} */
 	const anyBlock = block;
@@ -211,35 +266,123 @@ function isAirLike(dimension, pos) {
 }
 
 /**
- * @param {import("@minecraft/server").Dimension} dimension
- * @param {{x: number, z: number}} xz
- * @returns {{x: number, y: number, z: number} | null}
+ * @param {Dimension} dimension
+ * @param {Vec2} xz
+ * @param {number} topY
+ * @param {number} bottomY
+ * @returns {Vec3 | null}
  */
-function findSafeSurface(dimension, xz) {
-	for (let y = TOP_Y; y >= BOTTOM_Y + 1; y--) {
-		const ground = dimension.getBlock({ x: xz.x, y, z: xz.z });
-		if (!isValidStandBlock(ground)) continue;
+function findSafeSurface(dimension, xz, topY, bottomY) {
+	for (let y = topY; y >= bottomY; y--) {
+		const block = dimension.getBlock({ x: xz.x, y, z: xz.z });
+		if (!block) continue;
 
+		const typeId = block.typeId ?? "";
+		if (!typeId) continue;
+
+		/**
+		 * Shallow water rule:
+		 * - depth 1 => allowed if block below is solid
+		 * - depth 2+ => reject column
+		 */
+		if (isWaterBlockId(typeId)) {
+			let depth = 1;
+
+			for (let ny = y - 1; ny >= bottomY; ny--) {
+				const lower = dimension.getBlock({ x: xz.x, y: ny, z: xz.z });
+				if (!lower || !isWaterBlockId(lower.typeId ?? "")) break;
+				depth++;
+				if (depth > 1) return null;
+			}
+
+			const below = dimension.getBlock({ x: xz.x, y: y - 1, z: xz.z });
+			if (!isValidStandBlock(below)) return null;
+			if (!isAirLike(dimension, { x: xz.x, y: y + 1, z: xz.z }))
+				return null;
+			if (!isAirLike(dimension, { x: xz.x, y: y + 2, z: xz.z }))
+				return null;
+
+			return {
+				x: xz.x + 0.5,
+				y: y + 1,
+				z: xz.z + 0.5
+			};
+		}
+
+		if (!isValidStandBlock(block)) continue;
 		if (!isAirLike(dimension, { x: xz.x, y: y + 1, z: xz.z })) continue;
 		if (!isAirLike(dimension, { x: xz.x, y: y + 2, z: xz.z })) continue;
 
-		return { x: xz.x + 0.5, y: y + 1, z: xz.z + 0.5 };
+		return {
+			x: xz.x + 0.5,
+			y: y + 1,
+			z: xz.z + 0.5
+		};
 	}
 
 	return null;
 }
 
 /**
- * @param {import("@minecraft/server").Player} player
+ * @param {Player} player
  * @param {string} text
+ * @returns {void}
  */
-function msg(player, text) {
-	player.sendMessage(text);
+function showCountdownText(player, text) {
+	/** @type {any} */
+	const display = player.onScreenDisplay;
+
+	if (typeof display?.setTitle === "function") {
+		try {
+			display.setTitle(text);
+			return;
+		} catch {}
+	}
+
+	if (typeof display?.setActionBar === "function") {
+		display.setActionBar(text);
+	}
 }
 
 /**
- * @param {import("@minecraft/server").Dimension} dimension
+ * @param {Player} player
+ * @param {number} seconds
+ * @returns {Promise<void>}
+ */
+function countdown(player, seconds) {
+	return new Promise(resolve => {
+		let remaining = seconds;
+
+		const tick = () => {
+			if (!player.isValid) {
+				resolve();
+				return;
+			}
+
+			if (remaining <= 0) {
+				resolve();
+				return;
+			}
+
+			showCountdownText(player, `§eRTP in §6${remaining}§e...`);
+			remaining--;
+
+			if (remaining <= 0) {
+				resolve();
+				return;
+			}
+
+			system.runTimeout(tick, 20);
+		};
+
+		tick();
+	});
+}
+
+/**
+ * @param {Dimension} dimension
  * @param {string} name
+ * @returns {void}
  */
 function removeTickingAreaSafe(dimension, name) {
 	try {
@@ -248,41 +391,58 @@ function removeTickingAreaSafe(dimension, name) {
 }
 
 /**
- * @param {import("@minecraft/server").Dimension} dimension
+ * @param {Dimension} dimension
  * @param {string} name
  * @param {number} x
  * @param {number} z
+ * @param {number} topY
+ * @param {number} bottomY
+ * @returns {void}
  */
-function addTickingAreaSafe(dimension, name, x, z) {
-	dimension.runCommand(
-		`tickingarea add ${x} ${BOTTOM_Y} ${z} ${x} ${TOP_Y} ${z} ${name}`
-	);
+function addTickingAreaSafe(dimension, name, x, z, topY, bottomY) {
+	try {
+		dimension.runCommand(
+			`tickingarea add ${x} ${bottomY} ${z} ${x} ${topY} ${z} ${name}`
+		);
+	} catch {}
 }
 
 /**
- * @param {import("@minecraft/server").Player} player
+ * @param {Player} player
+ * @returns {void}
  */
 function startRtp(player) {
 	const key = player.name;
 
 	if (rtpLock.get(key)) {
-		msg(player, "§eRTP is already running...");
+		player.sendMessage("§eRTP is already running...");
 		return;
 	}
 
 	rtpLock.set(key, true);
 
-	const overworld = world.getDimension("minecraft:overworld");
-	const spawn = getWorldSpawn();
+	const dimension = player.dimension;
+	const profile = getRtpProfile(dimension.id);
+	const origin = profile.origin(player);
 	const tickingName = `rtp_${safeId(player.name)}`;
 
 	let attempt = 0;
+	let cleaned = false;
 
+	/**
+	 * @returns {void}
+	 */
 	const cleanup = () => {
-		removeTickingAreaSafe(overworld, tickingName);
+		if (cleaned) return;
+		cleaned = true;
+
+		removeTickingAreaSafe(dimension, tickingName);
 		rtpLock.delete(key);
 	};
 
+	/**
+	 * @returns {void}
+	 */
 	const step = () => {
 		if (!player.isValid) {
 			cleanup();
@@ -290,25 +450,26 @@ function startRtp(player) {
 		}
 
 		if (attempt >= MAX_ATTEMPTS) {
-			msg(player, "§cFailed to find a safe RTP location.");
+			player.sendMessage("§cFailed to find a safe RTP location.");
 			cleanup();
 			return;
 		}
 
 		attempt++;
 
-		const offset = randomXZ();
-		const x = spawn.x + offset.x;
-		const z = spawn.z + offset.z;
+		const offset = randomXZ(profile.minDistance, profile.maxDistance);
+		const x = Math.floor(origin.x + offset.x);
+		const z = Math.floor(origin.z + offset.z);
 
-		removeTickingAreaSafe(overworld, tickingName);
-
-		try {
-			addTickingAreaSafe(overworld, tickingName, x, z);
-		} catch {
-			system.runTimeout(step, 1);
-			return;
-		}
+		removeTickingAreaSafe(dimension, tickingName);
+		addTickingAreaSafe(
+			dimension,
+			tickingName,
+			x,
+			z,
+			profile.topY,
+			profile.bottomY
+		);
 
 		system.runTimeout(() => {
 			if (!player.isValid) {
@@ -316,42 +477,52 @@ function startRtp(player) {
 				return;
 			}
 
-			const chosen = findSafeSurface(overworld, { x, z });
+			const chosen = findSafeSurface(
+				dimension,
+				{ x, z },
+				profile.topY,
+				profile.bottomY
+			);
+
 			if (!chosen) {
-				removeTickingAreaSafe(overworld, tickingName);
+				removeTickingAreaSafe(dimension, tickingName);
 				system.runTimeout(step, 1);
 				return;
 			}
 
-			try {
-				player.teleport(chosen, { dimension: overworld });
-				msg(
-					player,
-					`§aTeleported to §e${Math.floor(chosen.x)}, ${Math.floor(chosen.y)}, ${Math.floor(chosen.z)}§a.`
-				);
-			} catch (error) {
-				msg(
-					player,
-					`§cRTP teleport error: ${String(error ?? "unknown")}`
-				);
-				cleanup();
-				return;
-			}
+			countdown(player, COUNTDOWN_SECONDS).then(() => {
+				if (!player.isValid) {
+					cleanup();
+					return;
+				}
 
-			system.runTimeout(() => {
-				cleanup();
-			}, 10);
-		}, LOAD_DELAY_TICKS);
+				try {
+					player.teleport(chosen, { dimension });
+					player.sendMessage(
+						`§aTeleported to §e${Math.floor(chosen.x)}, ${Math.floor(chosen.y)}, ${Math.floor(chosen.z)}§a.`
+					);
+					player.runCommand("playsound random.levelup @s ~~~ 1 3");
+				} catch (error) {
+					player.sendMessage(
+						`§cRTP teleport error: ${String(error ?? "unknown")}`
+					);
+				}
+
+				system.runTimeout(() => {
+					cleanup();
+				}, 10);
+			});
+		}, CHUNK_LOAD_DELAY_TICKS);
 	};
 
-	msg(player, "§7Searching safe location...");
+	player.sendMessage("§7Searching safe location...");
 	step();
 }
 
 registerCommand({
 	name: "rtp",
 	aliases: ["randomtp"],
-	run: function (player) {
+	run(player) {
 		startRtp(player);
 	}
 });
