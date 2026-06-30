@@ -1,4 +1,5 @@
 import { world, system, Player } from "@minecraft/server";
+import { configs } from "../../../../core/configs";
 import database from "../../../../core/database";
 
 /**
@@ -267,10 +268,6 @@ async function traverse(player, node, args, index, context) {
 }
 
 /**
- * Accepts either:
- * - raw command string: `fam create "Central Abyss"`
- * - token array: `["fam", "create", "Central Abyss"]`
- *
  * @param {Player} player
  * @param {string|string[]} input
  * @returns {Promise<CommandQueueResult>}
@@ -336,7 +333,7 @@ export function CommandQueue(player, input) {
 
 			resolve({
 				status: "Success",
-				message: `Running /${command.name}`
+				message: `Running ${configs.commandPrefix}${command.name}`
 			});
 		}, 5);
 	});
