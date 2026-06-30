@@ -9,7 +9,7 @@ import { valuable } from "./configs.js";
 
 /**
  * @typedef {Object} ValuableItem
- * @property {string} id
+ * @property {BlockTypeIDs} id
  * @property {string} category
  * @property {number} price
  */
