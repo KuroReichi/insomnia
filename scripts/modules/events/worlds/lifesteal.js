@@ -7,6 +7,7 @@ import {
 } from "@minecraft/server";
 import { configs } from "../../../core/configs.js";
 import database from "../../../core/database.js";
+import { getDate } from "../../utility/date";
 
 /**
  * @typedef {{killerName:string,date:number}} DeathEntry
@@ -429,7 +430,7 @@ world.afterEvents.entityDie.subscribe(event => {
 	const heart = new ItemStack("miaw:heart", 1);
 	heart.nameTag = `§r§u${player.name} §dHeart§u'§ds§r`;
 	heart.setLore([
-		`§r§6Obtained at §e${new Intl.DateTimeFormat("en-GB").format(new Date())}§f`,
+		`§r§6Obtained at §e${getDate()}§f`,
 		`§r§9× §3by §b${killerName}§f`
 	]);
 

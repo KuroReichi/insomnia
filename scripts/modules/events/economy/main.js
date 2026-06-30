@@ -2,6 +2,7 @@ import { system, world } from "@minecraft/server";
 import { configs } from "../../../core/configs.js";
 import database from "../../../core/database.js";
 import { valuable } from "./configs.js";
+import { getDate } from "../../utility/date";
 
 /**
  * @typedef {import("@minecraft/server").Player} Player
@@ -24,19 +25,12 @@ import { valuable } from "./configs.js";
 
 const REWARD_DELAY = 20 * 2;
 const currency = configs.modules.economy.currency;
-const timezone = configs.modules.realtime.timezone ?? "Asia/Jakarta";
 
 const PLACE_MIN_PERCENT = 32.71;
 const PLACE_MAX_PERCENT = 44.39;
 
 /** @type {Map<string, PendingReward>} */
 const pendingRewards = new Map();
-
-function getTodayKey() {
-	return new Intl.DateTimeFormat("en-GB", {
-		timeZone: timezone
-	}).format(new Date());
-}
 
 /**
  * @param {string} blockId
@@ -88,7 +82,7 @@ function takeMoney(playerName, amount) {
 function addDailyStat(playerName, type, amount) {
 	if (amount <= 0) return;
 
-	const date = getTodayKey();
+	const date = getDate();
 	const key = `blockStats:${type}`;
 
 	/** @type {Record<string, number>} */
