@@ -53,7 +53,27 @@ export const valuable = [
 		category: "wood",
 		price: 8
 	},
-
+	// Necessary
+	{
+		id: "minecraft:stone",
+		category: "necessary",
+		price: 0.01
+	},
+	{
+		id: "minecraft:andesite",
+		category: "necessary",
+		price: 0.14
+	},
+	{
+		id: "minecraft:granite",
+		category: "necessary",
+		price: 0.1
+	},
+	{
+		id: "minecraft:diorite",
+		category: "necessary",
+		price: 0.11
+	},
 	// Common ores
 	{
 		id: "minecraft:coal_ore",
@@ -100,7 +120,7 @@ export const valuable = [
 	{
 		id: "minecraft:deepslate_coal_ore",
 		category: "ore",
-		price: 22
+		price: 122
 	},
 	{
 		id: "minecraft:deepslate_copper_ore",
@@ -135,9 +155,8 @@ export const valuable = [
 	{
 		id: "minecraft:deepslate_emerald_ore",
 		category: "ore",
-		price: 165
+		price: 465
 	},
-
 	// Nether natural generation
 	{
 		id: "minecraft:quartz_ore",
@@ -209,18 +228,28 @@ export const valuable = [
 		category: "nether",
 		price: 22
 	},
-
-	// Overworld structures / rare natural blocks
+	// Unnecessary
+	{
+		id: "minecraft:raw_iron_block",
+		category: "unnecessary",
+		price: 117
+	},
+	{
+		id: "minecraft:raw_copper_block",
+		category: "unnecessary",
+		price: 129
+	},
 	{
 		id: "minecraft:bone_block",
-		category: "rare",
+		category: "unnecessary",
 		price: 36
 	},
 	{
 		id: "minecraft:obsidian",
-		category: "rare",
+		category: "unnecessary",
 		price: 32
 	},
+	// Rare
 	{
 		id: "minecraft:crying_obsidian",
 		category: "rare",
@@ -230,6 +259,16 @@ export const valuable = [
 		id: "minecraft:amethyst_block",
 		category: "rare",
 		price: 50
+	},
+	{
+		id: "minecraft:amethyst_cluster",
+		category: "rare",
+		price: 372
+	},
+	{
+		id: "minecraft:large_amethyst_bud",
+		category: "rare",
+		price: 83
 	},
 	{
 		id: "minecraft:calcite",

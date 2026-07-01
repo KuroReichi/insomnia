@@ -15,15 +15,15 @@ import { registerCommand } from "../../core/registry/index.js";
  * @property {number} maxDistance
  * @property {number} topY
  * @property {number} bottomY
+ * @property {number} scanStep
  * @property {(player: Player) => Origin2D} origin
  */
 
-/** @type {Map<string, boolean>} */
-const rtpLock = new Map();
+const rtpLock = new Set();
 
-const CHUNK_LOAD_DELAY_TICKS = 5;
 const COUNTDOWN_SECONDS = 5;
 const MAX_ATTEMPTS = 20;
+const CHUNK_READY_TIMEOUT_TICKS = 8;
 
 const WATER_BLOCKS = new Set(["minecraft:water", "minecraft:flowing_water"]);
 
@@ -74,51 +74,17 @@ const UNSAFE_BLOCKS = new Set([
 	"minecraft:portal"
 ]);
 
-const UNSAFE_PATTERNS = [
-	"door",
-	"trapdoor",
-	"button",
-	"pressure_plate",
-	"sign",
-	"hanging_sign",
-	"banner",
-	"torch",
-	"rail",
-	"vine",
-	"ladder",
-	"fence_gate",
-	"crop",
-	"sapling",
-	"mushroom",
-	"coral",
-	"bush",
-	"leaf",
-	"roots",
-	"kelp",
-	"seagrass",
-	"dripleaf",
-	"candle",
-	"cake",
-	"bed",
-	"spawner",
-	"portal",
-	"slab",
-	"stairs",
-	"wall",
-	"pane",
-	"fence",
-	"chain",
-	"bars",
-	"lantern"
-];
+const UNSAFE_PATTERN_RE =
+	/(door|trapdoor|button|pressure_plate|sign|hanging_sign|banner|torch|rail|vine|ladder|fence_gate|crop|sapling|mushroom|coral|bush|leaf|roots|kelp|seagrass|dripleaf|candle|cake|bed|spawner|portal|slab|stairs|wall|pane|fence|chain|bars|lantern)/i;
 
 /** @type {Record<string, RtpProfile>} */
 const RTP_PROFILES = {
 	"minecraft:overworld": {
 		minDistance: 251,
-		maxDistance: 1000,
+		maxDistance: 5000,
 		topY: 319,
 		bottomY: 0,
+		scanStep: 8,
 		origin: () => {
 			const spawn = world.getDefaultSpawnLocation();
 			return {
@@ -129,9 +95,10 @@ const RTP_PROFILES = {
 	},
 	"minecraft:nether": {
 		minDistance: 150,
-		maxDistance: 600,
+		maxDistance: 625,
 		topY: 123,
 		bottomY: 4,
+		scanStep: 6,
 		origin: player => ({
 			x: Math.floor(Number(player.location.x ?? 0)),
 			z: Math.floor(Number(player.location.z ?? 0))
@@ -142,9 +109,20 @@ const RTP_PROFILES = {
 		maxDistance: 3000,
 		topY: 319,
 		bottomY: 0,
+		scanStep: 8,
 		origin: () => ({ x: 0, z: 0 })
 	}
 };
+
+/**
+ * @param {number} ticks
+ * @returns {Promise<void>}
+ */
+function waitTicks(ticks) {
+	return new Promise(resolve =>
+		system.runTimeout(resolve, Math.max(0, ticks))
+	);
+}
 
 /**
  * @param {string} value
@@ -165,7 +143,7 @@ function getRtpProfile(dimensionId) {
 }
 
 /**
- * Random point inside an annulus, efficiently.
+ * Random point inside an annulus.
  * @param {number} minRadius
  * @param {number} maxRadius
  * @returns {Vec2}
@@ -186,120 +164,185 @@ function randomXZ(minRadius, maxRadius) {
  * @param {string} blockId
  * @returns {boolean}
  */
-function isUnsafeBlockId(blockId) {
-	if (!blockId) return true;
-	if (UNSAFE_BLOCKS.has(blockId)) return true;
-	if (WATER_BLOCKS.has(blockId)) return true;
-
-	for (const pattern of UNSAFE_PATTERNS) {
-		if (blockId.includes(pattern)) return true;
-	}
-
-	return false;
+function isWaterBlockId(blockId) {
+	return WATER_BLOCKS.has(blockId);
 }
 
 /**
  * @param {string} blockId
  * @returns {boolean}
  */
-function isWaterBlockId(blockId) {
-	return WATER_BLOCKS.has(blockId);
+function isUnsafeBlockId(blockId) {
+	if (!blockId) return true;
+	if (UNSAFE_BLOCKS.has(blockId)) return true;
+	return UNSAFE_PATTERN_RE.test(blockId);
 }
 
 /**
  * @param {import("@minecraft/server").Block | undefined} block
  * @returns {boolean}
  */
-function isValidStandBlock(block) {
-	if (!block) return false;
+function isAirLikeBlock(block) {
+	if (!block) return true;
 
-	const typeId = block.typeId ?? "";
-	if (isUnsafeBlockId(typeId)) return false;
+	const typeId = String(block.typeId ?? "");
+	if (!typeId) return true;
 
 	/** @type {any} */
 	const anyBlock = block;
-	if (typeof anyBlock.isAir === "boolean" && anyBlock.isAir) return false;
-	if (typeof anyBlock.isLiquid === "boolean" && anyBlock.isLiquid)
-		return false;
+	if (anyBlock.isAir === true) return true;
+	if (anyBlock.isLiquid === true) return true;
+
+	return isUnsafeBlockId(typeId);
+}
+
+/**
+ * @param {import("@minecraft/server").Block | undefined} block
+ * @returns {boolean}
+ */
+function isStandableBlock(block) {
+	if (!block) return false;
+
+	const typeId = String(block.typeId ?? "");
+	if (!typeId) return false;
+	if (isUnsafeBlockId(typeId)) return false;
+	if (isWaterBlockId(typeId)) return false;
+
+	/** @type {any} */
+	const anyBlock = block;
+	if (anyBlock.isAir === true) return false;
+	if (anyBlock.isLiquid === true) return false;
 
 	return true;
 }
 
 /**
  * @param {Dimension} dimension
- * @param {Vec3} pos
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
  * @returns {boolean}
  */
-function isAirLike(dimension, pos) {
-	const block = dimension.getBlock(pos);
-	if (!block) return true;
+function hasLoadedBlock(dimension, x, y, z) {
+	return !!dimension.getBlock({ x, y, z });
+}
 
-	const typeId = block.typeId ?? "";
-	if (!typeId) return true;
-	if (isUnsafeBlockId(typeId)) return true;
+/**
+ * @param {Dimension} dimension
+ * @param {number} x
+ * @param {number} z
+ * @param {number} topY
+ * @param {number} bottomY
+ * @returns {Promise<boolean>}
+ */
+async function waitForColumnReady(dimension, x, z, topY, bottomY) {
+	for (let i = 0; i < CHUNK_READY_TIMEOUT_TICKS; i++) {
+		if (
+			hasLoadedBlock(dimension, x, topY, z) ||
+			hasLoadedBlock(dimension, x, bottomY + 1, z)
+		) {
+			return true;
+		}
 
-	/** @type {any} */
-	const anyBlock = block;
-	if (typeof anyBlock.isAir === "boolean" && anyBlock.isAir) return true;
-	if (typeof anyBlock.isLiquid === "boolean" && anyBlock.isLiquid)
-		return true;
+		await waitTicks(1);
+	}
 
-	return false;
+	return (
+		hasLoadedBlock(dimension, x, topY, z) ||
+		hasLoadedBlock(dimension, x, bottomY + 1, z)
+	);
 }
 
 /**
  * @param {Dimension} dimension
  * @param {Vec2} xz
- * @param {number} topY
- * @param {number} bottomY
+ * @param {number} y
  * @returns {Vec3 | null}
  */
-function findSafeSurface(dimension, xz, topY, bottomY) {
-	for (let y = topY; y >= bottomY; y--) {
+function tryLandSurfaceAtY(dimension, xz, y) {
+	const block = dimension.getBlock({ x: xz.x, y, z: xz.z });
+	if (!isStandableBlock(block)) return null;
+
+	const above1 = dimension.getBlock({ x: xz.x, y: y + 1, z: xz.z });
+	const above2 = dimension.getBlock({ x: xz.x, y: y + 2, z: xz.z });
+
+	if (!isAirLikeBlock(above1)) return null;
+	if (!isAirLikeBlock(above2)) return null;
+
+	return {
+		x: xz.x + 0.5,
+		y: y + 1,
+		z: xz.z + 0.5
+	};
+}
+
+/**
+ * @param {Dimension} dimension
+ * @param {Vec2} xz
+ * @param {number} y
+ * @returns {Vec3 | null}
+ */
+function tryShallowWaterSurfaceAtY(dimension, xz, y) {
+	const water = dimension.getBlock({ x: xz.x, y, z: xz.z });
+	if (!water || !isWaterBlockId(String(water.typeId ?? ""))) return null;
+
+	const below = dimension.getBlock({ x: xz.x, y: y - 1, z: xz.z });
+	if (!isStandableBlock(below)) return null;
+	if (below && isWaterBlockId(String(below.typeId ?? ""))) return null;
+
+	const above1 = dimension.getBlock({ x: xz.x, y: y + 1, z: xz.z });
+	const above2 = dimension.getBlock({ x: xz.x, y: y + 2, z: xz.z });
+
+	if (!isAirLikeBlock(above1)) return null;
+	if (!isAirLikeBlock(above2)) return null;
+
+	return {
+		x: xz.x + 0.5,
+		y: y + 1,
+		z: xz.z + 0.5
+	};
+}
+
+/**
+ * Fast coarse-to-fine surface search.
+ * It avoids full top-to-bottom scans on every attempt.
+ *
+ * @param {Dimension} dimension
+ * @param {Vec2} xz
+ * @param {number} topY
+ * @param {number} bottomY
+ * @param {number} scanStep
+ * @returns {Vec3 | null}
+ */
+function findSafeSurface(dimension, xz, topY, bottomY, scanStep) {
+	for (let y = topY; y >= bottomY; y -= scanStep) {
 		const block = dimension.getBlock({ x: xz.x, y, z: xz.z });
 		if (!block) continue;
 
-		const typeId = block.typeId ?? "";
-		if (!typeId) continue;
+		const typeId = String(block.typeId ?? "");
 
-		/**
-		 * Shallow water rule:
-		 * - depth 1 => allowed if block below is solid
-		 * - depth 2+ => reject column
-		 */
-		if (isWaterBlockId(typeId)) {
-			let depth = 1;
-
-			for (let ny = y - 1; ny >= bottomY; ny--) {
-				const lower = dimension.getBlock({ x: xz.x, y: ny, z: xz.z });
-				if (!lower || !isWaterBlockId(lower.typeId ?? "")) break;
-				depth++;
-				if (depth > 1) return null;
-			}
-
-			const below = dimension.getBlock({ x: xz.x, y: y - 1, z: xz.z });
-			if (!isValidStandBlock(below)) return null;
-			if (!isAirLike(dimension, { x: xz.x, y: y + 1, z: xz.z }))
-				return null;
-			if (!isAirLike(dimension, { x: xz.x, y: y + 2, z: xz.z }))
-				return null;
-
-			return {
-				x: xz.x + 0.5,
-				y: y + 1,
-				z: xz.z + 0.5
-			};
+		if (!typeId || isAirLikeBlock(block)) {
+			continue;
 		}
 
-		if (!isValidStandBlock(block)) continue;
-		if (!isAirLike(dimension, { x: xz.x, y: y + 1, z: xz.z })) continue;
-		if (!isAirLike(dimension, { x: xz.x, y: y + 2, z: xz.z })) continue;
+		if (isWaterBlockId(typeId)) {
+			return tryShallowWaterSurfaceAtY(dimension, xz, y);
+		}
 
-		return {
-			x: xz.x + 0.5,
-			y: y + 1,
-			z: xz.z + 0.5
-		};
+		const bandTop = Math.min(topY, y + scanStep - 1);
+		const bandBottom = Math.max(bottomY, y - scanStep + 1);
+
+		for (let yy = bandTop; yy >= bandBottom; yy--) {
+			const surface = tryLandSurfaceAtY(dimension, xz, yy);
+			if (surface) return surface;
+
+			const probe = dimension.getBlock({ x: xz.x, y: yy, z: xz.z });
+			if (probe && isWaterBlockId(String(probe.typeId ?? ""))) {
+				return tryShallowWaterSurfaceAtY(dimension, xz, yy);
+			}
+		}
+
+		return null;
 	}
 
 	return null;
@@ -311,15 +354,9 @@ function findSafeSurface(dimension, xz, topY, bottomY) {
  * @returns {void}
  */
 function showCountdownText(player, text) {
-	/** @type {any} */
-	const display = player.sendMessage;
-
-	if (typeof display === "function") {
-		try {
-			display(text);
-			return;
-		} catch {}
-	}
+	try {
+		player.sendMessage(text);
+	} catch {}
 }
 
 /**
@@ -327,33 +364,17 @@ function showCountdownText(player, text) {
  * @param {number} seconds
  * @returns {Promise<void>}
  */
-function countdown(player, seconds) {
-	return new Promise(resolve => {
-		let remaining = seconds + 1;
+async function countdown(player, seconds) {
+	for (let remaining = seconds; remaining > 0; remaining--) {
+		if (!player.isValid) return;
 
-		const tick = () => {
-			if (!player.isValid) {
-				resolve();
-				return;
-			}
-
-			if (remaining <= 0) {
-				resolve();
-				return;
-			}
-
-			remaining--;
-			showCountdownText(
-				player,
-				`§aYou will be teleported in §e${remaining}`
-			);
-			player.playSound("random.pop");
-
-			system.runTimeout(tick, 20);
-		};
-
-		tick();
-	});
+		showCountdownText(
+			player,
+			`§aYou will be teleported in §e${remaining}§a...`
+		);
+		player.playSound("random.pop");
+		await waitTicks(20);
+	}
 }
 
 /**
@@ -386,24 +407,23 @@ function addTickingAreaSafe(dimension, name, x, z, topY, bottomY) {
 
 /**
  * @param {Player} player
- * @returns {void}
+ * @returns {Promise<void>}
  */
-function startRtp(player) {
+async function startRtp(player) {
 	const key = player.name;
 
-	if (rtpLock.get(key)) {
+	if (rtpLock.has(key)) {
 		player.sendMessage("§eRTP is already running...");
 		return;
 	}
 
-	rtpLock.set(key, true);
+	rtpLock.add(key);
 
 	const dimension = player.dimension;
 	const profile = getRtpProfile(dimension.id);
 	const origin = profile.origin(player);
-	const tickingName = `rtp_${safeId(player.name)}`;
+	const tickingName = `rtp_${safeId(player.name)}_${safeId(dimension.id)}`;
 
-	let attempt = 0;
 	let cleaned = false;
 
 	/**
@@ -417,89 +437,84 @@ function startRtp(player) {
 		rtpLock.delete(key);
 	};
 
-	/**
-	 * @returns {void}
-	 */
-	const step = () => {
-		if (!player.isValid) {
-			cleanup();
-			return;
-		}
+	try {
+		player.sendMessage("§7Searching safe location...");
 
-		if (attempt >= MAX_ATTEMPTS) {
-			player.sendMessage("§cFailed to find a safe RTP location.");
-			cleanup();
-			return;
-		}
+		for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+			if (!player.isValid) return;
 
-		attempt++;
+			const offset = randomXZ(profile.minDistance, profile.maxDistance);
+			const x = Math.floor(origin.x + offset.x);
+			const z = Math.floor(origin.z + offset.z);
 
-		const offset = randomXZ(profile.minDistance, profile.maxDistance);
-		const x = Math.floor(origin.x + offset.x);
-		const z = Math.floor(origin.z + offset.z);
+			removeTickingAreaSafe(dimension, tickingName);
+			addTickingAreaSafe(
+				dimension,
+				tickingName,
+				x,
+				z,
+				profile.topY,
+				profile.bottomY
+			);
 
-		removeTickingAreaSafe(dimension, tickingName);
-		addTickingAreaSafe(
-			dimension,
-			tickingName,
-			x,
-			z,
-			profile.topY,
-			profile.bottomY
-		);
+			const ready = await waitForColumnReady(
+				dimension,
+				x,
+				z,
+				profile.topY,
+				profile.bottomY
+			);
 
-		system.runTimeout(() => {
-			if (!player.isValid) {
-				cleanup();
-				return;
+			if (!ready || !player.isValid) {
+				removeTickingAreaSafe(dimension, tickingName);
+				await waitTicks(1);
+				continue;
 			}
 
 			const chosen = findSafeSurface(
 				dimension,
 				{ x, z },
 				profile.topY,
-				profile.bottomY
+				profile.bottomY,
+				profile.scanStep
 			);
 
 			if (!chosen) {
 				removeTickingAreaSafe(dimension, tickingName);
-				system.runTimeout(step, 1);
-				return;
+				await waitTicks(1);
+				continue;
 			}
 
-			countdown(player, COUNTDOWN_SECONDS).then(() => {
-				if (!player.isValid) {
-					cleanup();
-					return;
-				}
+			await countdown(player, COUNTDOWN_SECONDS);
 
-				try {
-					player.teleport(chosen, { dimension });
-					player.sendMessage(
-						`§aTeleported to §e${Math.floor(chosen.x)}, ${Math.floor(chosen.y)}, ${Math.floor(chosen.z)}§a.`
-					);
-					player.runCommand("playsound random.levelup @s ~~~ 1 3");
-				} catch (error) {
-					player.sendMessage(
-						`§cRTP teleport error: ${String(error ?? "unknown")}`
-					);
-				}
+			if (!player.isValid) return;
 
-				system.runTimeout(() => {
-					cleanup();
-				}, 10);
-			});
-		}, CHUNK_LOAD_DELAY_TICKS);
-	};
+			try {
+				player.teleport(chosen, { dimension });
+				player.sendMessage(
+					`§aTeleported to §e${Math.floor(chosen.x)}, ${Math.floor(chosen.y)}, ${Math.floor(chosen.z)}§a.`
+				);
+				player.runCommand("playsound random.levelup @s ~ ~ ~ 1 3");
+			} catch (error) {
+				player.sendMessage(
+					`§cRTP teleport error: ${String(error ?? "unknown")}`
+				);
+			}
 
-	player.sendMessage("§7Searching safe location...");
-	step();
+			await waitTicks(2);
+			return;
+		}
+
+		player.sendMessage("§cFailed to find a safe RTP location.");
+	} finally {
+		cleanup();
+	}
 }
 
 registerCommand({
 	name: "rtp",
 	aliases: ["randomtp"],
-	run(player) {
-		startRtp(player);
+	async run(player) {
+		await startRtp(player);
 	}
 });
