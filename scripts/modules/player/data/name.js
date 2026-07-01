@@ -49,13 +49,13 @@ function getFamiliaNametagPrefix(player) {
 
 	const parts = [];
 
-	if (abbreviation) {
-		parts.push(`§3§l${abbreviation}§r`);
+	if (fullName) {
+		parts.push(`§b${fullName}`);
 	}
 
-	if (fullName) {
-		if (abbreviation) parts.push("§7-");
-		parts.push(`§b${fullName}`);
+	if (abbreviation) {
+		if (abbreviation) parts.push("\n");
+		parts.push(`§3§l${abbreviation}§r`);
 	}
 
 	return parts.length > 0 ? `${parts.join(" ")} ` : "";
@@ -71,17 +71,27 @@ function updateNametag(player) {
 		const pingColor = getPingColor(ping);
 
 		const familiaPrefix = getFamiliaNametagPrefix(player);
-		const bountyValue = Number(/** @type {any} */ (database.get("bounty", player.name)) ?? 0);
-		const moneyValue = Number(/** @type {any} */ (database.get("money", player.name)) ?? 0);
+		const bountyValue = Number(
+			/** @type {any} */ (database.get("bounty", player.name)) ?? 0
+		);
+		const moneyValue = Number(
+			/** @type {any} */ (database.get("money", player.name)) ?? 0
+		);
 		const bounty = metricNumber(Math.floor(moneyValue / 70) + bountyValue);
 
-		player.nameTag = [`${familiaPrefix}`, `§f${player.name} §r${pingColor}${ping}ms`, `§cBounty §e${configs.modules.economy.currency}${bounty}§r`].join("\n");
+		player.nameTag = [
+			`${familiaPrefix} §7- ${pingColor}${player.name}`,
+			`§cBounty §e${configs.modules.economy.currency}${bounty}§r`
+		].join("\n");
 	} catch (e) {}
 }
 
 world.beforeEvents.playerInteractWithEntity.subscribe(event => {
 	if (event.itemStack) {
-		if (event.itemStack?.typeId === "minecraft:name_tag" && event.target.typeId === "minecraft:player") {
+		if (
+			event.itemStack?.typeId === "minecraft:name_tag" &&
+			event.target.typeId === "minecraft:player"
+		) {
 			event.cancel = true;
 		}
 	}

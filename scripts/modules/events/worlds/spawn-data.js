@@ -8,6 +8,7 @@ import database from "../../../core/database.js";
 
 world.afterEvents.playerSpawn.subscribe(event => {
 	const player = event.player;
+	world.gameRules.showDeathMessages = false;
 	if (event.initialSpawn) {
 		if (!database.get("date.first-join", player.name)) {
 			const list = /** @type {string[]} */ (

@@ -29,8 +29,6 @@ const WATER_BLOCKS = new Set(["minecraft:water", "minecraft:flowing_water"]);
 
 const UNSAFE_BLOCKS = new Set([
 	"minecraft:air",
-	"minecraft:cave_air",
-	"minecraft:void_air",
 	"minecraft:lava",
 	"minecraft:flowing_lava",
 	"minecraft:fire",
@@ -41,10 +39,6 @@ const UNSAFE_BLOCKS = new Set([
 	"minecraft:cactus",
 	"minecraft:sweet_berry_bush",
 	"minecraft:powder_snow",
-	"minecraft:short_grass",
-	"minecraft:tall_grass",
-	"minecraft:fern",
-	"minecraft:large_fern",
 	"minecraft:torch",
 	"minecraft:redstone_torch",
 	"minecraft:soul_torch",
@@ -69,7 +63,6 @@ const UNSAFE_BLOCKS = new Set([
 	"minecraft:glow_lichen",
 	"minecraft:tripwire",
 	"minecraft:sea_pickle",
-	"minecraft:waterlily",
 	"minecraft:door",
 	"minecraft:trapdoor",
 	"minecraft:sign",
@@ -96,7 +89,6 @@ const UNSAFE_PATTERNS = [
 	"fence_gate",
 	"crop",
 	"sapling",
-	"flower",
 	"mushroom",
 	"coral",
 	"bush",
@@ -117,7 +109,6 @@ const UNSAFE_PATTERNS = [
 	"fence",
 	"chain",
 	"bars",
-	"grate",
 	"lantern"
 ];
 
@@ -127,7 +118,7 @@ const RTP_PROFILES = {
 		minDistance: 251,
 		maxDistance: 1000,
 		topY: 319,
-		bottomY: -64,
+		bottomY: 0,
 		origin: () => {
 			const spawn = world.getDefaultSpawnLocation();
 			return {
@@ -321,17 +312,13 @@ function findSafeSurface(dimension, xz, topY, bottomY) {
  */
 function showCountdownText(player, text) {
 	/** @type {any} */
-	const display = player.onScreenDisplay;
+	const display = player.sendMessage;
 
-	if (typeof display?.setTitle === "function") {
+	if (typeof display === "function") {
 		try {
-			display.setTitle(text);
+			display(text);
 			return;
 		} catch {}
-	}
-
-	if (typeof display?.setActionBar === "function") {
-		display.setActionBar(text);
 	}
 }
 
@@ -342,7 +329,7 @@ function showCountdownText(player, text) {
  */
 function countdown(player, seconds) {
 	return new Promise(resolve => {
-		let remaining = seconds;
+		let remaining = seconds + 1;
 
 		const tick = () => {
 			if (!player.isValid) {
@@ -355,13 +342,12 @@ function countdown(player, seconds) {
 				return;
 			}
 
-			showCountdownText(player, `§eRTP in §6${remaining}§e...`);
 			remaining--;
-
-			if (remaining <= 0) {
-				resolve();
-				return;
-			}
+			showCountdownText(
+				player,
+				`§aYou will be teleported in §e${remaining}`
+			);
+			player.playSound("random.pop");
 
 			system.runTimeout(tick, 20);
 		};
