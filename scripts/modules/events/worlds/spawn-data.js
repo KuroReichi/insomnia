@@ -67,10 +67,6 @@ world.afterEvents.playerSpawn.subscribe(event => {
 			});
 		}
 	} else {
-		/** @type {DeathTrack | undefined} */
-		const track = /** @type {DeathTrack | undefined} */ (
-			database.get("death.tracks", player.name)
-		);
 		if (track?.isDeathRecently) {
 			player.runCommand(
 				`event entity ${player.name} miaw:hp_${Math.floor(Number(player.getComponent("minecraft:health")?.defaultValue) - 2)}`
