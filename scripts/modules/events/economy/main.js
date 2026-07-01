@@ -2,7 +2,7 @@ import { system, world } from "@minecraft/server";
 import { configs } from "../../../core/configs.js";
 import database from "../../../core/database.js";
 import { valuable } from "./configs.js";
-import { getDate } from "../../utility/date";
+import { getDateInTimezone } from "../../utility/date";
 import { metricNumber } from "../../utility/metrics";
 
 /**
@@ -87,7 +87,7 @@ function takeMoney(playerName, amount) {
 function addDailyStat(playerName, type, amount) {
 	if (amount <= 0) return;
 
-	const date = getDate();
+	const date = getDateInTimezone();
 	const key = `blockStats:${type}`;
 
 	/** @type {Record<string, number>} */

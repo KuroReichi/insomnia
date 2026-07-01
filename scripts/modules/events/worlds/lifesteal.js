@@ -7,7 +7,7 @@ import {
 } from "@minecraft/server";
 import { configs } from "../../../core/configs.js";
 import database from "../../../core/database.js";
-import { getDate } from "../../utility/date";
+import { getDate } from "../../utility/date.js";
 
 /**
  * @typedef {{killerName:string,date:number}} DeathEntry
@@ -36,7 +36,7 @@ import { getDate } from "../../utility/date";
 const currency = configs.modules.economy.currency;
 
 /** Combat window in milliseconds */
-const COMBAT_EXPIRE_MS = 60_000;
+const COMBAT_EXPIRE_MS = 30_000;
 
 /** Bounty / death balance */
 const bountyRate = 0.18;
@@ -214,7 +214,6 @@ function getCombatWeight(entry, now) {
 	const remaining = Math.max(0, entry.expiredAt - now);
 	const recency = remaining / COMBAT_EXPIRE_MS;
 
-	// Recent contributors get more weight, but totalDamage still matters most.
 	return Math.max(1, entry.totalDamage) * (0.45 + 0.55 * recency);
 }
 
@@ -325,6 +324,226 @@ function distributeBounty(contributors, pool, killerName) {
 	}
 }
 
+/**
+ * @param {any} damageSource
+ * @param {boolean} killerIsPlayer
+ * @param {boolean} hasItem
+ * @returns {string}
+ */
+function getDeathTranslateKey(damageSource, killerIsPlayer, hasItem) {
+	const cause = String(damageSource?.cause ?? "generic");
+
+	switch (cause) {
+		case "anvil":
+			return "death.attack.anvil";
+		case "arrow":
+			return killerIsPlayer && hasItem
+				? "death.attack.arrow.item"
+				: "death.attack.arrow";
+		case "blockExplosion":
+		case "explosion":
+			return killerIsPlayer
+				? "death.attack.explosion.player"
+				: "death.attack.explosion";
+		case "cactus":
+			return killerIsPlayer
+				? "death.attack.cactus.player"
+				: "death.attack.cactus";
+		case "dehydration":
+			return "death.attack.dehydration";
+		case "drown":
+			return killerIsPlayer
+				? "death.attack.drown.player"
+				: "death.attack.drown";
+		case "fall":
+			return "death.fell.accident.generic";
+		case "fallingBlock":
+			return "death.attack.fallingBlock";
+		case "fire":
+			return killerIsPlayer
+				? "death.attack.inFire.player"
+				: "death.attack.inFire";
+		case "fireball":
+			return killerIsPlayer && hasItem
+				? "death.attack.fireball.item"
+				: "death.attack.fireball";
+		case "fireworks":
+			return "death.attack.fireworks";
+		case "flyIntoWall":
+			return "death.attack.flyIntoWall";
+		case "freeze":
+			return "death.attack.freeze";
+		case "generic":
+			return "death.attack.generic";
+		case "indirectMagic":
+			return killerIsPlayer && hasItem
+				? "death.attack.indirectMagic.item"
+				: "death.attack.indirectMagic";
+		case "inWall":
+			return "death.attack.inWall";
+		case "lava":
+			return killerIsPlayer
+				? "death.attack.lava.player"
+				: "death.attack.lava";
+		case "lightningBolt":
+			return "death.attack.lightningBolt";
+		case "maceSmash":
+			return killerIsPlayer && hasItem
+				? "death.attack.maceSmash.player.item"
+				: killerIsPlayer
+					? "death.attack.maceSmash.player"
+					: "death.attack.maceSmash";
+		case "magic":
+			return killerIsPlayer
+				? "death.attack.indirectMagic"
+				: "death.attack.magic";
+		case "magma":
+			return killerIsPlayer
+				? "death.attack.magma.player"
+				: "death.attack.magma";
+		case "mob":
+			return killerIsPlayer && hasItem
+				? "death.attack.mob.item"
+				: killerIsPlayer
+					? "death.attack.player"
+					: "death.attack.mob";
+		case "onFire":
+			return killerIsPlayer
+				? "death.attack.onFire.player"
+				: "death.attack.onFire";
+		case "outOfWorld":
+			return "death.attack.outOfWorld";
+		case "projectile":
+			return killerIsPlayer && hasItem
+				? "death.attack.arrow.item"
+				: "death.attack.arrow";
+		case "spit":
+			return "death.attack.spit";
+		case "sonicBoom":
+			return killerIsPlayer
+				? "death.attack.sonicBoom.player"
+				: "death.attack.sonicBoom";
+		case "starve":
+			return "death.attack.starve";
+		case "sweetBerry":
+			return "death.attack.sweetBerry";
+		case "thorns":
+			return "death.attack.thorns";
+		case "thrown":
+			return killerIsPlayer && hasItem
+				? "death.attack.thrown.item"
+				: "death.attack.thrown";
+		case "trident":
+			return killerIsPlayer && hasItem
+				? "death.attack.trident.item"
+				: "death.attack.trident";
+		case "wither":
+			return "death.attack.wither";
+		case "stalactite":
+			return "death.attack.stalactite";
+		case "stalagmite":
+			return "death.attack.stalagmite";
+		case "drowning":
+			return "death.attack.drown";
+		default:
+			return killerIsPlayer
+				? "death.attack.player"
+				: "death.attack.generic";
+	}
+}
+
+/**
+ * @param {string} key
+ * @param {string} victimName
+ * @param {string} killerName
+ * @param {string} itemName
+ * @param {boolean} hasItem
+ * @returns {import("@minecraft/server").RawMessage}
+ */
+function buildDeathTranslateMessage(
+	key,
+	victimName,
+	killerName,
+	itemName,
+	hasItem
+) {
+	const victimText = `§c${victimName}`;
+	const killerText = `§e${killerName}`;
+	const itemText = `§b${itemName}`;
+
+	switch (key) {
+		case "death.attack.arrow.item":
+		case "death.attack.fireball.item":
+		case "death.attack.indirectMagic.item":
+		case "death.attack.maceSmash.player.item":
+		case "death.attack.mob.item":
+		case "death.attack.thrown.item":
+		case "death.attack.trident.item":
+			return {
+				translate: key,
+				with: [victimText, killerText, hasItem ? itemText : killerText]
+			};
+
+		case "death.attack.arrow":
+		case "death.attack.cactus.player":
+		case "death.attack.drown.player":
+		case "death.attack.explosion.player":
+		case "death.attack.inFire.player":
+		case "death.attack.lava.player":
+		case "death.attack.maceSmash.player":
+		case "death.attack.onFire.player":
+		case "death.attack.sonicBoom.player":
+		case "death.attack.thrown":
+		case "death.attack.trident":
+		case "death.attack.player":
+		case "death.attack.mob":
+		case "death.attack.indirectMagic":
+		case "death.attack.magic":
+		case "death.attack.magma.player":
+		case "death.attack.fireball":
+			return {
+				translate: key,
+				with: [victimText, killerText]
+			};
+
+		case "death.attack.anvil":
+		case "death.attack.cactus":
+		case "death.attack.dehydration":
+		case "death.attack.drown":
+		case "death.attack.explosion":
+		case "death.attack.fallingBlock":
+		case "death.attack.flyIntoWall":
+		case "death.attack.freeze":
+		case "death.attack.generic":
+		case "death.attack.inFire":
+		case "death.attack.inWall":
+		case "death.attack.lava":
+		case "death.attack.lightningBolt":
+		case "death.attack.maceSmash":
+		case "death.attack.magma":
+		case "death.attack.onFire":
+		case "death.attack.outOfWorld":
+		case "death.attack.spit":
+		case "death.attack.starve":
+		case "death.attack.sweetBerry":
+		case "death.attack.thorns":
+		case "death.attack.wither":
+		case "death.attack.sonicBoom":
+		case "death.attack.stalactite":
+		case "death.attack.stalagmite":
+		case "death.fell.accident.generic":
+			return {
+				translate: key,
+				with: [victimText]
+			};
+
+		default:
+			return {
+				text: `§c${victimName} §7died`
+			};
+	}
+}
+
 world.afterEvents.entityHurt.subscribe(
 	event => {
 		const victim = event.hurtEntity;
@@ -357,6 +576,15 @@ world.afterEvents.entityDie.subscribe(event => {
 	const track = getDeathTrack(player.name);
 	const lastDeath = track.lastDeaths[track.lastDeaths.length - 1];
 	const { killerName, track: combatTrack } = resolveCombatSource(player.name);
+
+	const damageSource = event.damageSource ?? {};
+	const killerEntity = damageSource.damagingEntity ?? null;
+	const killerIsPlayer = killerName !== "Environment";
+	const hasItem = !!combatTrack.lastHit?.using?.nameTag;
+	const itemName =
+		safeString(combatTrack.lastHit?.using?.nameTag) ||
+		safeString(combatTrack.lastHit?.using?.typeId) ||
+		"item";
 
 	const sameKillerRecently =
 		killerName !== "Environment" &&
@@ -391,10 +619,9 @@ world.afterEvents.entityDie.subscribe(event => {
 
 	saveDeathTrack(player.name, track);
 
-	const killerPlayer =
-		killerName !== "Environment"
-			? (world.getAllPlayers().find(p => p.name === killerName) ?? null)
-			: null;
+	const killerPlayer = killerIsPlayer
+		? (world.getAllPlayers().find(p => p.name === killerName) ?? null)
+		: null;
 
 	const killerHealth = killerPlayer
 		? Math.floor(
@@ -406,15 +633,33 @@ world.afterEvents.entityDie.subscribe(event => {
 			)
 		: 0;
 
-	const deathLine =
-		killerName !== "Environment"
-			? `§7${player.name} §cwas slain by §e${killerName} §7(§c:heart:${killerHealth}§7)§8.`
-			: `§7${player.name} §cdied§8.`;
+	const deathKey = getDeathTranslateKey(
+		damageSource,
+		killerIsPlayer || !!killerEntity,
+		hasItem
+	);
+
+	const deathMessage = buildDeathTranslateMessage(
+		deathKey,
+		player.name,
+		killerIsPlayer ? killerName : "Environment",
+		itemName,
+		hasItem
+	);
 
 	const rewardLine = ` §8[§eBounty §7-${currency}${bountyPool}§8, §cDeath §7-${currency}${deathPenalty}§8]`;
 
 	world.sendMessage({
-		rawtext: [{ text: deathLine }, { text: rewardLine }]
+		rawtext: [
+			{ text: "§c" },
+			deathMessage,
+			{
+				text: killerIsPlayer
+					? ` §7(§c:heart:${killerHealth}§7)§8.`
+					: "§8."
+			},
+			{ text: rewardLine }
+		]
 	});
 
 	for (const listener of world.getAllPlayers()) {

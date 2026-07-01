@@ -1,5 +1,5 @@
 import database from "../../../../../core/database.js";
-
+import { formatDate } from "../../../../utility/date";
 /**
  * @typedef {import("@minecraft/server").Player} Player
  */
@@ -59,10 +59,10 @@ const FAMILY_DB_KEY = "familia";
 
 /**
  * @param {string} value
- * @returns {atring}
+ * @returns {string}
  */
 function clean(value) {
-	/** @type {atring} */
+	/** @type {string} */
 	return String(value ?? "").trim();
 }
 
@@ -211,22 +211,6 @@ function familyRelationText(family) {
 		relation => relation.type === "neutral"
 	).length;
 	return `${allies} ally, ${enemies} enemy, ${neutrals} neutral`;
-}
-
-/**
- * @param {number | string | Date} value
- * @returns {string}
- */
-function formatDate(value) {
-	const date = new Date(value);
-
-	/** @param {number} value */
-	const pad = value => String(value).padStart(2, "0");
-
-	return (
-		`${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}, ` +
-		`${pad(date.getHours())}:${pad(date.getMinutes())} WIB`
-	);
 }
 
 /**

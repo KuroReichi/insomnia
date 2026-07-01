@@ -152,6 +152,8 @@ world.beforeEvents.entityHurt.subscribe(event => {
 	const attacker = damagingEntity;
 	const victim = hurtEntity;
 
+	if (attacker.name === victim.name) return;
+
 	const attackerUid = getPlayerFamiliaUid(attacker.name);
 	const victimUid = getPlayerFamiliaUid(victim.name);
 

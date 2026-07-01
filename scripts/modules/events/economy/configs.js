@@ -140,7 +140,7 @@ export const valuable = [
 
 	// Nether natural generation
 	{
-		id: "minecraft:nether_quartz_ore",
+		id: "minecraft:quartz_ore",
 		category: "nether",
 		price: 24
 	},
@@ -160,7 +160,7 @@ export const valuable = [
 		price: 32
 	},
 	{
-		id: "minecraft:magma_block",
+		id: "minecraft:magma",
 		category: "nether",
 		price: 26
 	},
@@ -205,7 +205,7 @@ export const valuable = [
 		price: 60
 	},
 	{
-		id: "minecraft:chain",
+		id: "minecraft:iron_chain",
 		category: "nether",
 		price: 22
 	},
@@ -267,7 +267,7 @@ export const valuable = [
 		price: 55
 	},
 	{
-		id: "minecraft:spawner",
+		id: "minecraft:mob_spawner",
 		category: "rare",
 		price: 4000
 	}
