@@ -17,96 +17,133 @@ Incoming events are dispatched to specialized modules responsible for gameplay m
 
 Every module communicates through a centralized persistence layer, allowing data such as player statistics, economy, guild information, and world states to remain synchronized throughout the server lifecycle.
 
-## Workflows
+## Diagram Workflows
 
 ```mermaid
-graph TD
-    %% Styling
-    classDef core fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef db fill:#fca,stroke:#333,stroke-width:2px;
-    classDef event fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef cmd fill:#bfb,stroke:#333,stroke-width:2px;
-    classDef module fill:#ffd,stroke:#333,stroke-width:1px;
+flowchart TB
+    %% =========================
+    %% Styles
+    %% =========================
+    classDef core fill:#2b2b2b,stroke:#8a8a8a,color:#ffffff,stroke-width:1.5px;
+    classDef entry fill:#243b55,stroke:#6fa8dc,color:#ffffff,stroke-width:1.5px;
+    classDef input fill:#3b2d5c,stroke:#b39ddb,color:#ffffff,stroke-width:1.5px;
+    classDef dispatch fill:#4a3f1d,stroke:#e6c15a,color:#ffffff,stroke-width:1.5px;
+    classDef command fill:#1f4d3a,stroke:#7bd389,color:#ffffff,stroke-width:1.2px;
+    classDef event fill:#4d1f2f,stroke:#e07a9a,color:#ffffff,stroke-width:1.2px;
+    classDef system fill:#234a4d,stroke:#7fd1d8,color:#ffffff,stroke-width:1.2px;
+    classDef module fill:#2f2a1f,stroke:#c9b37e,color:#ffffff,stroke-width:1px;
+    classDef note fill:#1c1c1c,stroke:#666,color:#dcdcdc,stroke-dasharray: 4 3;
 
-    %% --- CORE ---
-    subgraph CoreLayer ["Core Layer"]
-        DB[("Database\n(core/database.js)")]:::db
-        CFG["Configs\n(core/configs.js)"]:::core
+    %% =========================
+    %% Core shared state
+    %% =========================
+    subgraph Core["Shared Core"]
+        CFG["core/configs.js\nServer + module config"]:::core
+        DB["core/database.js\nDynamicProperty store"]:::core
+        UTL["shared utils\nmetrics.js / date.js"]:::core
     end
 
-    %% --- ENTRY POINT ---
-    IDX["index.js\n(Entry Point)"]:::core
-    
-    %% --- MINECRAFT API EVENTS ---
-    subgraph MCApi ["Minecraft API Events"]
-        ChatEvt["chatSend\n(messages/chat.js)"]:::event
-        WorldEvt["World & Entity Events\n(afterEvents / beforeEvents)"]:::event
-        SysInt["System Intervals\n(system.runInterval)"]:::event
+    %% =========================
+    %% Bootstrap
+    %% =========================
+    subgraph Bootstrap["Bootstrap / Entry"]
+        IDX["scripts/index.js\nentrypoint"]:::entry
+        LOAD["modules/commands/loader.js\nregister all commands"]:::entry
+        CHAT["modules/messages/chat.js\nchat prefix interceptor"]:::input
     end
 
-    %% --- COMMAND SYSTEM ---
-    subgraph CmdSys ["Command System"]
-        CmdQueue["Command Queue & Parser\n(registry/index.js)"]:::cmd
-        CmdLoader["Command Loader\n(loader.js)"]:::cmd
-        
-        subgraph CmdLibs ["Command Libraries"]
-            CmdFam["Familia\n(Create, Join, Manage, Relation)"]:::module
-            CmdEco["Economy\n(Money, Bounty, Baltop)"]:::module
-            CmdCom["Common & Debug\n(RTP, Playtime, Help, Debug)"]:::module
+    IDX --> LOAD
+    IDX --> CHAT
+
+    %% =========================
+    %% Command input pipeline
+    %% =========================
+    subgraph CmdFlow["Command Workflow"]
+        PREFIX["Prefix check\n! / ? / custom"]:::input
+        TOKEN["Tokenize quoted args"]:::dispatch
+        QUEUE["CommandQueue(...)"]:::dispatch
+        TREE["Registry tree\ncommands/core/registry/index.js"]:::dispatch
+
+        subgraph CmdLibs["Registered Command Libraries"]
+            C_FAM["familia/*\ncreate, join, leave,\nhome, relation, manage"]:::command
+            C_ECO["economy/*\nmoney, bounty, baltop"]:::command
+            C_COM["common/*\nhelp, rtp, playtime, debug"]:::command
         end
     end
 
-    %% --- GAMEPLAY EVENT MODULES ---
-    subgraph EventMods ["Gameplay Event Modules"]
-        ModLifesteal["Lifesteal\n(Kill/Death, Bounties, Hearts)"]:::module
-        ModRegion["Region Protect\n(Block/Entity Protection)"]:::module
-        ModEco["Economy Events\n(Block Break/Place Rewards)"]:::module
-        ModFam["Familia Events\n(Anti Friendly-Fire)"]:::module
-        ModRealtime["Realtime\n(IRL Timezone Sync)"]:::module
-        ModSpawn["Spawn Data\n(First Join & Death Tracks)"]:::module
+    CHAT --> PREFIX --> TOKEN --> QUEUE --> TREE
+    LOAD --> TREE
+    TREE --> C_FAM
+    TREE --> C_ECO
+    TREE --> C_COM
+
+    C_FAM --> DB
+    C_ECO --> DB
+    C_COM --> DB
+    C_COM --> CFG
+
+    %% =========================
+    %% World / gameplay events
+    %% =========================
+    subgraph GameEvents["Gameplay Event Workflow"]
+        WE["world.beforeEvents / afterEvents"]:::event
+
+        subgraph EventMods["Event Modules"]
+            RGN["events/worlds/region-protect.js\nblock/entity/item rules"]:::module
+            LIFE["events/worlds/lifesteal.js\nkill, death, hearts, bounty"]:::module
+            ECOEV["events/economy/main.js\nbreak/place money flow"]:::module
+            FAMEV["events/familia/main.js\nanti-friendly-fire, relations"]:::module
+            SPAWN["events/worlds/spawn-data.js\njoin/death state"]:::module
+            REAL["events/worlds/realtime.js\nIRL -> world time sync"]:::module
+        end
     end
 
-    %% --- PLAYER SYSTEMS ---
-    subgraph PlayerSys ["Player Background Systems"]
-        SysNametag["Nametag Updater\n(Bounty, Ping, Familia Prefix)"]:::module
-        SysPlaytime["Playtime Tracker"]:::module
+    WE --> RGN
+    WE --> LIFE
+    WE --> ECOEV
+    WE --> FAMEV
+    WE --> SPAWN
+    WE --> REAL
+
+    RGN --> CFG
+    RGN --> DB
+    LIFE --> DB
+    ECOEV --> DB
+    ECOEV --> UTL
+    FAMEV --> DB
+    SPAWN --> DB
+    REAL --> CFG
+    REAL --> DB
+
+    %% =========================
+    %% Background / interval systems
+    %% =========================
+    subgraph BgSys["Background Systems"]
+        SYS["system.runInterval / runTimeout"]:::system
+        NAMETAG["player nametag updater\nbounty + ping + familia"]:::module
+        PLAYTIME["player data/playtime.js"]:::module
     end
 
-    %% --- RELATIONSHIPS & FLOW ---
-    
-    %% Initialization
-    IDX --> ChatEvt
-    IDX --> WorldEvt
-    IDX --> SysInt
-    IDX --> CmdLoader
+    SYS --> NAMETAG
+    SYS --> PLAYTIME
+    NAMETAG --> DB
+    NAMETAG --> CFG
+    NAMETAG --> UTL
+    PLAYTIME --> DB
 
-    %% Chat to Commands Workflow
-    ChatEvt -- "Intercepts Prefix (!)" --> CmdQueue
-    CmdLoader --> CmdQueue
-    CmdQueue -- "Executes" --> CmdLibs
-    
-    %% World Events to Gameplay Modules Workflow
-    WorldEvt --> ModLifesteal
-    WorldEvt --> ModRegion
-    WorldEvt --> ModEco
-    WorldEvt --> ModFam
-    WorldEvt --> ModSpawn
+    %% =========================
+    %% Cross-links / practical flow
+    %% =========================
+    IDX --> WE
+    IDX --> SYS
+    IDX --> CFG
+    IDX --> DB
+    TREE --> DB
 
-    %% System Intervals to Background Tasks Workflow
-    SysInt --> ModRealtime
-    SysInt --> SysNametag
-    SysInt --> SysPlaytime
+    %% =========================
+    %% Legend / note
+    %% =========================
+    NOTE["Actual flow summary:\n1) index.js boots and imports side-effect modules\n2) chatSend → CommandQueue → registry → command modules\n3) world events → gameplay modules\n4) system intervals → nametag/playtime/realtime\n5) configs + database are shared state"]:::note
 
-    %% Read/Write to Database
-    CmdLibs -. "Read/Write" .-> DB
-    ExtLifesteal -. "Read/Write (Money, Bounty)" .-> DB
-    ExtRegion -. "Read (Regions)" .-> DB
-    ExtEconomy -. "Read/Write (Stats, Money)" .-> DB
-    ExtFamilia -. "Read (Relations)" .-> DB
-    ExtSpawnData -. "Read/Write (Session)" .-> DB
-    PlayerNameSystem -. "Read (Bounty, Familia)" .-> DB
-    Playtime -. "Read/Write (Ticks)" .-> DB
-    
-    RealtimeIntegration -. "Read (Timezone)" .-> CFG
-    RegionProtection -. "Read (Configs)" .-> CFG
+    IDX -.-> NOTE
 ```
