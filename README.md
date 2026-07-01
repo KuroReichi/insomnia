@@ -1,5 +1,10 @@
 # Insomnia Core
 
+<p align="left">
+  <img src="https://img.shields.io/badge/Insomnia-5B8CFF?style=for-the-badge&logo=minecraft&logoColor=white" alt="Insomnia">
+  <img src="https://wakatime.com/badge/github/KuroReichi/insomnia.svg" alt="WakaTime">
+</p>
+
 Insomnia Core is a modular framework for Minecraft Bedrock Edition built on the Script API. It provides a scalable, event-driven architecture for building gameplay systems, managing player data, executing commands, and maintaining persistent storage through Minecraft Dynamic Properties.
 
 Designed with modularity in mind, every subsystem operates independently while remaining connected through a centralized runtime. This architecture makes the project easy to maintain, extend, and integrate with new features without affecting existing modules.
@@ -16,72 +21,92 @@ Every module communicates through a centralized persistence layer, allowing data
 
 ```mermaid
 graph TD
-    %% Core System
-    MC((Minecraft\nServer Events))
-    Index[scripts/index.js\nMain Entry Point]
-    DB[(core/database.js\nDynamic Properties)]
-    CFG[core/configs.js\nConfigurations]
-
-    %% Load Core
-    Index -->|Initializes| CFG
-    Index -->|Reads/Writes| DB
-    Index -->|Subscribes| MC
-
-    %% Event Modules
-    subgraph Event_Modules [World & Event Handlers]
-        Evt_Spawn[Spawn Data\nPlayer Init & Death Tracks]
-        Evt_Region[Region Protect\nAnti-Grief, PVP, Block Filter]
-        Evt_Lifesteal[Lifesteal System\nBounty, Death Penalty, Hearts]
-        Evt_Time[Realtime Sync\nIRL Timezone to MC Ticks]
-    end
-
-    %% Data Trackers
-    subgraph Data_Trackers [Player Data Tracking]
-        Stat_Tracker[Statistics\nBreak, Place, KD, Damage]
-        Time_Tracker[Playtime Tracker\nTicks to Days/Hours]
-    end
-
-    MC -->|spawn / die / interact| Event_Modules
-    MC -->|tick / events| Data_Trackers
-
-    Event_Modules -.->|Save Data| DB
-    Data_Trackers -.->|Store Stats| DB
-    Event_Modules -.->|Read Settings| CFG
-
-    %% Command Engine
-    subgraph Command_System [Command Architecture]
-        Chat[messages/chat.js\nChat Listener]
-        CmdRegistry{core/registry\nCommand Queue & Parser}
-
-        Cmd_Eco[Economy\nmoney, bounty]
-        Cmd_Fam[Familia System\ncreate, join, manage, etc.]
-        Cmd_Misc[Common / Utility\nping, help, debug]
-    end
-
-    MC -->|beforeEvents.chatSend| Chat
-    Chat -->|Prefix Check & Parse| CmdRegistry
-    CmdRegistry -->|Execute| Cmd_Eco
-    CmdRegistry -->|Execute| Cmd_Fam
-    CmdRegistry -->|Execute| Cmd_Misc
-
-    Cmd_Eco -.->|Modify Economy| DB
-    Cmd_Fam -.->|Manage Guild Data| DB
-    Chat -.->|Read Prefix| CFG
-
     %% Styling
-    classDef core fill:#2d3436,stroke:#dfe6e9,stroke-width:2px,color:#fff;
-    classDef db fill:#0984e3,stroke:#74b9ff,stroke-width:2px,color:#fff;
-    classDef event fill:#00b894,stroke:#55efc4,stroke-width:2px,color:#fff;
-    classDef cmd fill:#d63031,stroke:#ff7675,stroke-width:2px,color:#fff;
+    classDef core fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef db fill:#fca,stroke:#333,stroke-width:2px;
+    classDef event fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef cmd fill:#bfb,stroke:#333,stroke-width:2px;
+    classDef module fill:#ffd,stroke:#333,stroke-width:1px;
 
-    class Index,CFG core;
-    class DB db;
-    class Evt_Spawn,Evt_Region,Evt_Lifesteal,Evt_Time,Stat_Tracker,Time_Tracker event;
-    class Chat,CmdRegistry,Cmd_Eco,Cmd_Fam,Cmd_Misc cmd;
+    %% --- CORE ---
+    subgraph CoreLayer ["Core Layer"]
+        DB[("Database\n(core/database.js)")]:::db
+        CFG["Configs\n(core/configs.js)"]:::core
+    end
+
+    %% --- ENTRY POINT ---
+    IDX["index.js\n(Entry Point)"]:::core
+    
+    %% --- MINECRAFT API EVENTS ---
+    subgraph MCApi ["Minecraft API Events"]
+        ChatEvt["chatSend\n(messages/chat.js)"]:::event
+        WorldEvt["World & Entity Events\n(afterEvents / beforeEvents)"]:::event
+        SysInt["System Intervals\n(system.runInterval)"]:::event
+    end
+
+    %% --- COMMAND SYSTEM ---
+    subgraph CmdSys ["Command System"]
+        CmdQueue["Command Queue & Parser\n(registry/index.js)"]:::cmd
+        CmdLoader["Command Loader\n(loader.js)"]:::cmd
+        
+        subgraph CmdLibs ["Command Libraries"]
+            CmdFam["Familia\n(Create, Join, Manage, Relation)"]:::module
+            CmdEco["Economy\n(Money, Bounty, Baltop)"]:::module
+            CmdCom["Common & Debug\n(RTP, Playtime, Help, Debug)"]:::module
+        end
+    end
+
+    %% --- GAMEPLAY EVENT MODULES ---
+    subgraph EventMods ["Gameplay Event Modules"]
+        ModLifesteal["Lifesteal\n(Kill/Death, Bounties, Hearts)"]:::module
+        ModRegion["Region Protect\n(Block/Entity Protection)"]:::module
+        ModEco["Economy Events\n(Block Break/Place Rewards)"]:::module
+        ModFam["Familia Events\n(Anti Friendly-Fire)"]:::module
+        ModRealtime["Realtime\n(IRL Timezone Sync)"]:::module
+        ModSpawn["Spawn Data\n(First Join & Death Tracks)"]:::module
+    end
+
+    %% --- PLAYER SYSTEMS ---
+    subgraph PlayerSys ["Player Background Systems"]
+        SysNametag["Nametag Updater\n(Bounty, Ping, Familia Prefix)"]:::module
+        SysPlaytime["Playtime Tracker"]:::module
+    end
+
+    %% --- RELATIONSHIPS & FLOW ---
+    
+    %% Initialization
+    IDX --> ChatEvt
+    IDX --> WorldEvt
+    IDX --> SysInt
+    IDX --> CmdLoader
+
+    %% Chat to Commands Workflow
+    ChatEvt -- "Intercepts Prefix (!)" --> CmdQueue
+    CmdLoader --> CmdQueue
+    CmdQueue -- "Executes" --> CmdLibs
+    
+    %% World Events to Gameplay Modules Workflow
+    WorldEvt --> ModLifesteal
+    WorldEvt --> ModRegion
+    WorldEvt --> ModEco
+    WorldEvt --> ModFam
+    WorldEvt --> ModSpawn
+
+    %% System Intervals to Background Tasks Workflow
+    SysInt --> ModRealtime
+    SysInt --> SysNametag
+    SysInt --> SysPlaytime
+
+    %% Read/Write to Database
+    CmdLibs -. "Read/Write" .-> DB
+    ExtLifesteal -. "Read/Write (Money, Bounty)" .-> DB
+    ExtRegion -. "Read (Regions)" .-> DB
+    ExtEconomy -. "Read/Write (Stats, Money)" .-> DB
+    ExtFamilia -. "Read (Relations)" .-> DB
+    ExtSpawnData -. "Read/Write (Session)" .-> DB
+    PlayerNameSystem -. "Read (Bounty, Familia)" .-> DB
+    Playtime -. "Read/Write (Ticks)" .-> DB
+    
+    RealtimeIntegration -. "Read (Timezone)" .-> CFG
+    RegionProtection -. "Read (Configs)" .-> CFG
 ```
-
-## WakaTime Stats
-
-<p align="center">
-    <img src="https://wakatime.com/share/@kuroreichi/231a862f-6d12-47b3-a0db-696f53ec5acb.svg" alt="WakaTime Stats">
-</p>
