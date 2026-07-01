@@ -131,6 +131,7 @@ const dimensionRegions = {
 const actionLedger = new Map();
 
 let booted = false;
+let ready = false;
 
 /**
  * @param {unknown} value
@@ -445,13 +446,9 @@ function collectItemPayloads(payload) {
 	/** @type {unknown[]} */
 	const out = [];
 
-	if (Array.isArray(payload)) {
-		return payload;
-	}
+	if (Array.isArray(payload)) return payload;
 
-	if (!payload || typeof payload !== "object") {
-		return out;
-	}
+	if (!payload || typeof payload !== "object") return out;
 
 	const data = /** @type {any} */ (payload);
 
@@ -665,13 +662,13 @@ const loadRegionProtect = () => {
 	}
 };
 
-world.afterEvents.worldLoad.subscribe(() => {
-	if (booted) return;
-	booted = true;
-
-	loadRegionProtect();
-
+/**
+ * @returns {void}
+ */
+function bindRegionProtectEvents() {
 	world.beforeEvents.playerBreakBlock?.subscribe(event => {
+		if (!ready) return;
+
 		const { player, block } = event;
 		const region = getBestRegion(block.location, block.dimension.id);
 		if (!region) return;
@@ -694,6 +691,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.beforeEvents.playerPlaceBlock?.subscribe(event => {
+		if (!ready) return;
+
 		const { player, block } = event;
 		const region = getBestRegion(block.location, block.dimension.id);
 		if (!region) return;
@@ -716,6 +715,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.beforeEvents.playerInteractWithBlock?.subscribe(event => {
+		if (!ready) return;
+
 		const { player, block } = event;
 		const region = getBestRegion(block.location, block.dimension.id);
 		if (!region) return;
@@ -742,6 +743,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.beforeEvents.itemUse?.subscribe(event => {
+		if (!ready) return;
+
 		const { source, itemStack } = event;
 		if (!source || source.typeId !== "minecraft:player" || !itemStack)
 			return;
@@ -772,6 +775,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.beforeEvents.playerInteractWithEntity?.subscribe(event => {
+		if (!ready) return;
+
 		const { player, target } = event;
 		const region = getBestRegion(target.location, target.dimension.id);
 		if (!region) return;
@@ -797,6 +802,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.afterEvents.entityItemPickup?.subscribe(event => {
+		if (!ready) return;
+
 		const payload = /** @type {any} */ (event);
 		const entity = payload.entity;
 		if (!entity || entity.typeId !== "minecraft:player") return;
@@ -815,6 +822,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.beforeEvents.entityHurt?.subscribe(event => {
+		if (!ready) return;
+
 		const { hurtEntity, damageSource } = event;
 		if (!hurtEntity) return;
 
@@ -851,6 +860,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.beforeEvents.explosion?.subscribe(event => {
+		if (!ready) return;
+
 		const impactedBlocks =
 			typeof event.getImpactedBlocks === "function"
 				? event.getImpactedBlocks()
@@ -873,6 +884,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.afterEvents.entityItemDrop?.subscribe(event => {
+		if (!ready) return;
+
 		const payload = /** @type {any} */ (event);
 		const entity = payload.entity;
 		if (!entity || entity.typeId !== "minecraft:player") return;
@@ -906,6 +919,8 @@ world.afterEvents.worldLoad.subscribe(() => {
 	});
 
 	world.afterEvents.entitySpawn?.subscribe(event => {
+		if (!ready) return;
+
 		const { entity } = event;
 		if (!entity || entity.typeId === "minecraft:player") return;
 
@@ -934,4 +949,14 @@ world.afterEvents.worldLoad.subscribe(() => {
 			} catch {}
 		}
 	});
+}
+
+bindRegionProtectEvents();
+
+world.afterEvents.worldLoad.subscribe(() => {
+	if (booted) return;
+	booted = true;
+
+	loadRegionProtect();
+	ready = true;
 });
