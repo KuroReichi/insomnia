@@ -920,34 +920,35 @@ function bindRegionProtectEvents() {
 
 	world.afterEvents.entitySpawn?.subscribe(event => {
 		if (!ready) return;
+		try {
+			const { entity } = event;
+			if (!entity || entity.typeId === "minecraft:player") return;
 
-		const { entity } = event;
-		if (!entity || entity.typeId === "minecraft:player") return;
+			const region = getBestRegion(entity.location, entity.dimension.id);
+			if (!region) return;
 
-		const region = getBestRegion(entity.location, entity.dimension.id);
-		if (!region) return;
+			const familyComponent = /** @type {any} */ (
+				entity.getComponent("minecraft:type_family")
+			);
 
-		const familyComponent = /** @type {any} */ (
-			entity.getComponent("minecraft:type_family")
-		);
+			const isAnimal =
+				typeof familyComponent?.hasTypeFamily === "function" &&
+				familyComponent.hasTypeFamily("animal");
 
-		const isAnimal =
-			typeof familyComponent?.hasTypeFamily === "function" &&
-			familyComponent.hasTypeFamily("animal");
+			const isMonster =
+				typeof familyComponent?.hasTypeFamily === "function" &&
+				familyComponent.hasTypeFamily("monster");
 
-		const isMonster =
-			typeof familyComponent?.hasTypeFamily === "function" &&
-			familyComponent.hasTypeFamily("monster");
-
-		const rules = region.permission.entities.spawn;
-		if (
-			(rules.animals === false && isAnimal) ||
-			(rules.monster === false && isMonster)
-		) {
-			try {
-				entity.remove();
-			} catch {}
-		}
+			const rules = region.permission.entities.spawn;
+			if (
+				(rules.animals === false && isAnimal) ||
+				(rules.monster === false && isMonster)
+			) {
+				try {
+					entity.remove();
+				} catch {}
+			}
+		} catch (e) {}
 	});
 }
 
