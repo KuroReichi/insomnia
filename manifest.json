@@ -2,10 +2,10 @@
 	"$schema": "https://raw.githubusercontent.com/Blockception/Minecraft-bedrock-json-schemas/refs/heads/main/general/manifest.json",
 	"format_version": 2,
 	"header": {
-		"name": "Insomnia Core",
+		"name": "Insomnia Core v2",
 		"description": "By KuroReichii",
-		"uuid": "1990a121-3ee2-4c1d-ba25-d8454911c4be",
-		"version": [1, 0, 1],
+		"uuid": "13575c16-df16-4dab-9015-2a20f3fd2987",
+		"version": [2, 0, 0],
 		"min_engine_version": [1, 26, 32]
 	},
 	"metadata": {
@@ -17,13 +17,13 @@
 	"modules": [
 		{
 			"type": "data",
-			"uuid": "9d8e18e1-d179-4d42-ace6-2e1d07c6dea5",
-			"version": [1, 0, 0]
+			"uuid": "97f7241b-f525-41a7-ad7e-14724fd7e362",
+			"version": [2, 0, 0]
 		},
 		{
 			"type": "script",
-			"uuid": "239c134f-67bf-4738-9bcc-8c69d31b1f72",
-			"version": [1, 0, 1],
+			"uuid": "65cf3764-c296-40ad-bd20-15fef5f16bc7",
+			"version": [2, 0, 0],
 			"language": "javascript",
 			"entry": "scripts/index.js"
 		}
