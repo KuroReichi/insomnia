@@ -159,7 +159,7 @@ function flushPending(key) {
 	}
 
 	if (pending.player.isValid) {
-		const sign = pending.type === "break" ? "§2+§a" : "§2-§c";
+		const sign = pending.type === "break" ? "§2+§a" : "§4-§c";
 		pending.player.onScreenDisplay.setActionBar(
 			`${sign}${currency}${metricNumber(pending.amount)}`
 		);
