@@ -1,5 +1,0 @@
-{
-	"name": "registry",
-	"exports": "./index.js",
-	"types": "./index.d.ts"
-}
