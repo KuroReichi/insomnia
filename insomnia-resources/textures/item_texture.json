@@ -1,0 +1,13 @@
+{
+	"$schema": "https://github.com/Blockception/Minecraft-bedrock-json-schemas/raw/refs/heads/main/resource/textures/item_texture.json",
+	"resource_pack_name": "insomnia",
+	"texture_name": "atlas.items",
+	"texture_data": {
+		"heart": {
+			"textures": "textures/items/heart"
+		},
+		"heart_essence": {
+			"textures": "textures/items/heart_essence"
+		}
+	}
+}

@@ -1,0 +1,49 @@
+{
+	"$schema": "https://raw.githubusercontent.com/Blockception/Minecraft-bedrock-json-schemas/refs/heads/main/general/manifest.json",
+	"format_version": 2,
+	"header": {
+		"name": "Insomnia Core v2",
+		"description": "By KuroReichii",
+		"uuid": "e3d673ec-fdc9-4ee9-be1a-07c652eb7abf",
+		"version": [2, 0, 0],
+		"min_engine_version": [1, 26, 32]
+	},
+	"metadata": {
+		"authors": ["KuroReichii"],
+		"url": "https://github.com/KuroReichi/insomnia",
+		"license": "Apache 2.0",
+		"product_type": "addon"
+	},
+	"modules": [
+		{
+			"type": "data",
+			"uuid": "24652f41-70e2-4035-a5b1-5fb8c3979d4e",
+			"version": [2, 0, 0]
+		},
+		{
+			"type": "script",
+			"uuid": "47ce4d46-e7b5-40e9-a3c4-30a05e0f05c0",
+			"version": [2, 0, 0],
+			"language": "javascript",
+			"entry": "scripts/index.js"
+		}
+	],
+	"dependencies": [
+		{
+			"module_name": "@minecraft/server",
+			"version": "beta"
+		},
+		{
+			"module_name": "@minecraft/server-ui",
+			"version": "beta"
+		},
+		{
+			"module_name": "@minecraft/server-net",
+			"version": "beta"
+		},
+		{
+			"module_name": "@minecraft/server-admin",
+			"version": "beta"
+		}
+	]
+}

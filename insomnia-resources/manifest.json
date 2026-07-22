@@ -1,0 +1,24 @@
+{
+	"$schema": "https://raw.githubusercontent.com/Blockception/Minecraft-bedrock-json-schemas/refs/heads/main/general/manifest.json",
+	"format_version": 2,
+	"header": {
+		"name": "Insomnia RP",
+		"description": "By KuroReichii",
+		"uuid": "05fc5208-67c5-4720-9d83-3b9fab05c8c8",
+		"version": [1, 0, 0],
+		"min_engine_version": [1, 26, 32]
+	},
+	"metadata": {
+		"authors": ["KuroReichii"],
+		"url": "https://github.com/KuroReichi/insomnia",
+		"license": "Apache 2.0",
+		"product_type": "addon"
+	},
+	"modules": [
+		{
+			"type": "resources",
+			"uuid": "13e6c07c-fa52-42d8-8517-cd5be0f2cf51",
+			"version": [1, 0, 0]
+		}
+	]
+}
