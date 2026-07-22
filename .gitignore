@@ -1,5 +1,1 @@
-*.prettierrc
-tsconfig.json
-clone
-code
-main
+node_modules/node_modules/

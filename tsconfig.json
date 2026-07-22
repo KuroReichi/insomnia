@@ -1,0 +1,26 @@
+{
+	"compilerOptions": {
+		"checkJs": true,
+		"allowJs": true,
+		"module": "ES2020",
+		"moduleResolution": "Bundler",
+		"target": "ES2021",
+		"lib": ["ES2021"],
+		"types": [
+			"@minecraft/server",
+			"@minecraft/server-ui",
+			"@minecraft/server-net",
+			"@minecraft/server-admin"
+		],
+		"rootDir": "./insomnia-core/src",
+		"outDir": "./insomnia-core/scripts",
+		"removeComments": false
+	},
+	"include": [
+		"insomnia-core/src/**/*.js",
+		"insomnia-core/src/**/*.d.ts",
+		"insomnia-core/src/**/*.ts",
+		"insomnia-core/scripts/**/*.*"
+	],
+	"exclude": ["node_modules"]
+}
