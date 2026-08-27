@@ -1,0 +1,17 @@
+{
+  "config.auto_command.title": "Auto Command",
+  "config.auto_command.category.feed": "Auto Feed",
+  "config.auto_command.feed.enabled": "Enable automatic feed",
+  "config.auto_command.feed.threshold": "Hunger threshold",
+  "config.auto_command.feed.command": "Feed command",
+  "config.auto_command.category.heal": "Auto Heal",
+  "config.auto_command.heal.enabled": "Enable automatic heal",
+  "config.auto_command.heal.threshold": "Health threshold",
+  "config.auto_command.heal.command": "Heal command",
+  "config.auto_command.category.fix": "Auto Fix",
+  "config.auto_command.fix.enabled": "Enable automatic fix",
+  "config.auto_command.fix.threshold": "Durability remaining (%)",
+  "config.auto_command.fix.command": "Fix command",
+  "config.auto_command.category.general": "General",
+  "config.auto_command.general.cooldown": "Command cooldown (seconds)"
+}

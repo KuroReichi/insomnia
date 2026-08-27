@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "auto_command",
+  "version": "${version}",
+  "name": "Auto Command",
+  "description": "Client-side automatic commands based on hunger, health, and item durability thresholds.",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.kuroreichi.autocommand.AutoCommandClient"
+    ],
+    "modmenu": [
+      "com.kuroreichi.autocommand.AutoCommandModMenu"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "26.2",
+    "fabric-api": "*",
+    "yet_another_config_lib_v3": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
