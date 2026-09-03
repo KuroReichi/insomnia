@@ -1,6 +1,5 @@
 package com.kuroreichi.filterattack;
 
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -21,9 +20,9 @@ public final class FilterAttackConfigScreen extends Screen {
     protected void init() {
         int center = this.width / 2;
 
-        entityBox = new EditBox(this.font, center - 155, 68, 310, 115, Component.literal("Blocked entity IDs"));
+        entityBox = new EditBox(this.font, center - 155, 65, 310, 120, Component.literal("Blocked entity IDs"));
         entityBox.setValue(FilterAttackClient.CONFIG == null ? "" : FilterAttackClient.CONFIG.getBlockedText());
-        entityBox.setHint(Component.literal("minecraft:creeper\\nminecraft:zombie"));
+        entityBox.setHint(Component.literal("minecraft:creeper,minecraft:zombie"));
         entityBox.setMaxLength(32767);
         addRenderableWidget(entityBox);
 
@@ -53,15 +52,6 @@ public final class FilterAttackConfigScreen extends Screen {
     @Override
     public void onClose() {
         this.minecraft.gui.setScreen(parent);
-    }
-
-    @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-        super.extractRenderState(graphics, mouseX, mouseY, delta);
-        int center = this.width / 2;
-        graphics.centeredText(this.font, this.title, center, 35, 0xFFFFFFFF);
-        graphics.centeredText(this.font, Component.literal("One entity ID per line; commas are also accepted"), center, 51, 0xFFAAAAAA);
-        graphics.centeredText(this.font, Component.literal("Short IDs like 'creeper' become 'minecraft:creeper'"), center, 183, 0xFF777777);
     }
 
     @Override
