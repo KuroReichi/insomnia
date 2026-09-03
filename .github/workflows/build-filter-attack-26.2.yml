@@ -1,0 +1,33 @@
+name: Build Filter Attack 26.2
+
+on:
+  push:
+    branches: [filter-attack-26.2]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/filter-attack
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+      - name: Build
+        run: gradle build --no-daemon
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: filter-attack-26.2
+          path: tools/filter-attack/build/libs/*-mc26.2.jar
+
+# Re-runable build workflow for Minecraft 26.2.
