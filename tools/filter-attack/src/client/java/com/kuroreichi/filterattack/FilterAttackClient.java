@@ -41,6 +41,4 @@ public final class FilterAttackClient implements ClientModInitializer {
         var id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
         return id == null ? "unknown" : id.toString();
     }
-
-    private FilterAttackClient() {}
 }
