@@ -60,5 +60,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: filter-attack-26.2
-          path: tools/filter-attack/build/libs/*-mc26.2.jar
+          path: tools/filter-attack/build/libs/*.jar
           if-no-files-found: error
