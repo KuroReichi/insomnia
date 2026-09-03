@@ -1,5 +1,6 @@
 package com.kuroreichi.filterattack;
 
+import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -11,10 +12,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.EntityHitResult;
 
 @Environment(EnvType.CLIENT)
-public final class FilterAttackClient {
+public final class FilterAttackClient implements ClientModInitializer {
     public static FilterAttackConfig CONFIG;
 
-    public static void onInitializeClient() {
+    @Override
+    public void onInitializeClient() {
         CONFIG = FilterAttackConfig.load();
 
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) ->
