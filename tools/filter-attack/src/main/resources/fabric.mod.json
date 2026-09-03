@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "filter_attack",
+  "version": "${version}",
+  "name": "Filter Attack",
+  "description": "Client-side entity attack filter. Prevents attacks against configured entity types.",
+  "authors": ["KuroReichi"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.kuroreichi.filterattack.FilterAttackClient"],
+    "modmenu": ["com.kuroreichi.filterattack.FilterAttackModMenu"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "26.2",
+    "fabric-api": ">=0.152.0"
+  }
+}

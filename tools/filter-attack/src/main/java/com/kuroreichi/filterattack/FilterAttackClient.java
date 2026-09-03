@@ -3,7 +3,7 @@ package com.kuroreichi.filterattack;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.event.client.player.ClientPreAttackCallback;
+import net.fabricmc.fabric.api.client.event.client.player.ClientPreAttackCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -25,8 +25,12 @@ public final class FilterAttackClient {
             return InteractionResult.PASS;
         });
 
-        ClientPreAttackCallback.EVENT.register((client, player, clickCount) ->
-                client.hitResult instanceof EntityHitResult entityHit && isBlocked(entityHit.getEntity()));
+        ClientPreAttackCallback.EVENT.register((client, player, clickCount) -> {
+            if (client.hitResult instanceof EntityHitResult entityHit && isBlocked(entityHit.getEntity())) {
+                return true;
+            }
+            return false;
+        });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (CONFIG == null) CONFIG = FilterAttackConfig.load();

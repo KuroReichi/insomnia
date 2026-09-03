@@ -61,7 +61,6 @@ public final class FilterAttackConfig {
                 if (raw == null) continue;
                 String id = raw.trim().toLowerCase();
                 if (id.isEmpty()) continue;
-                if (id.indexOf(':') < 0) id = "minecraft:" + id;
                 normalized.add(id);
             }
         }
