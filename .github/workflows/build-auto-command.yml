@@ -64,3 +64,5 @@ jobs:
           if-no-files-found: error
 
 # Re-run CI after configuration UI changes.
+
+# Trigger build for 26.2 UI API fix.
