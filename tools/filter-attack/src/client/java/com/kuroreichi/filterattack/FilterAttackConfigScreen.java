@@ -74,7 +74,7 @@ public final class FilterAttackConfigScreen extends Screen {
 
     private static String displayName(String id) {
         try {
-            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(net.minecraft.resources.Identifier.parse(id));
+            EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(net.minecraft.resources.Identifier.parse(id)).orElse(null);
             return type == null ? id : Component.translatable(type.getDescriptionId()).getString();
         } catch (Exception ignored) {
             return id;
