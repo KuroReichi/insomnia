@@ -66,3 +66,5 @@ jobs:
 # Re-run CI after configuration UI changes.
 
 # Trigger build for 26.2 UI API fix.
+
+# Rebuild after registry API fix.
