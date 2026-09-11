@@ -66,13 +66,14 @@ public final class GameChatLogsClient implements ClientModInitializer {
         UUID uuid = client.player == null ? null : client.player.getUUID();
         Path root = resolveStorageRoot();
         Path serverDir = root.resolve(sanitize(address));
-        session = new Session(address, server == null ? 25565 : extractPort(address), playerName, uuid, serverDir, Instant.now());
+        session = new Session(address, extractPort(address), playerName, uuid, serverDir, Instant.now());
+        Session current = session;
         CompletableFuture.runAsync(() -> {
             try {
                 Files.createDirectories(serverDir.resolve("latest"));
-                Files.writeString(serverDir.resolve("latest").resolve("log.txt"), header(session), StandardCharsets.UTF_8,
+                Files.writeString(serverDir.resolve("latest").resolve("log.txt"), header(current), StandardCharsets.UTF_8,
                         StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
-                writeJson(session);
+                writeJson(current);
             } catch (IOException ignored) {
             }
         }, IO);
@@ -119,8 +120,10 @@ public final class GameChatLogsClient implements ClientModInitializer {
             try {
                 Files.createDirectories(current.serverDir);
                 String historyName = "history-" + FILE_TIME.format(current.startedAt) + ".log";
-                Files.copy(current.serverDir.resolve("latest").resolve("log.txt"), current.serverDir.resolve(historyName),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Path latestTxt = current.serverDir.resolve("latest").resolve("log.txt");
+                if (Files.exists(latestTxt)) {
+                    Files.copy(latestTxt, current.serverDir.resolve(historyName), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
                 writeJson(current);
                 if (CONFIG.githubSync && !CONFIG.githubOwner.isBlank() && !CONFIG.githubRepository.isBlank() && !CONFIG.githubToken.isBlank()) {
                     GitHubSync.upload(current);
@@ -131,13 +134,14 @@ public final class GameChatLogsClient implements ClientModInitializer {
     }
 
     static Path resolveStorageRoot() {
-        if ("instance".equalsIgnoreCase(CONFIG.storageMode)) return Minecraft.getInstance().gameDirectory.resolve(".kuro.chatlogs");
+        Path instanceRoot = Minecraft.getInstance().gameDirectory.toPath();
+        if ("instance".equalsIgnoreCase(CONFIG.storageMode)) return instanceRoot.resolve(".kuro.chatlogs");
         Path external = Path.of("/storage/emulated/0/@kuro.chatlogs");
         try {
             Files.createDirectories(external);
             return external;
         } catch (IOException ignored) {
-            Path fallback = Minecraft.getInstance().gameDirectory.resolve("@kuro.chatlogs");
+            Path fallback = instanceRoot.resolve("@kuro.chatlogs");
             try { Files.createDirectories(fallback); } catch (IOException ignoredAgain) { }
             return fallback;
         }
@@ -180,6 +184,7 @@ public final class GameChatLogsClient implements ClientModInitializer {
             }
         }
         root.add("messages", messages);
+        Files.createDirectories(s.serverDir.resolve("latest"));
         Files.writeString(s.serverDir.resolve("latest").resolve("log.json"), GSON.toJson(root), StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
     }
@@ -218,9 +223,4 @@ public final class GameChatLogsClient implements ClientModInitializer {
     }
 
     record Entry(Instant timestamp, String type, String sender, String message, boolean overlay) { }
-
-    static void shutdown() {
-        finishSession();
-        IO.shutdown();
-    }
 }
