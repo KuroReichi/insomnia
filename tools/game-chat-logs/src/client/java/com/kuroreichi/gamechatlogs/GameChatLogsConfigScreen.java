@@ -101,7 +101,7 @@ public final class GameChatLogsConfigScreen extends Screen {
         graphics.centeredText(this.font, Component.literal("Logs are written outside the instance when External is selected"), this.width / 2, 43, 0xFFAAAAAA);
         graphics.fill(left, 124, left + width, 240, 0x50000000);
         graphics.outline(left, 124, width, 116, 0x80FFFFFF);
-        graphics.drawString(this.font, Component.literal("GitHub sync uploads finalized history logs to an existing repository"), left, 275, 0xFFAAAAAA, false);
+        graphics.centeredText(this.font, Component.literal("GitHub sync uploads finalized history logs to an existing repository"), this.width / 2, 287, 0xFFAAAAAA);
     }
 
     @Override
