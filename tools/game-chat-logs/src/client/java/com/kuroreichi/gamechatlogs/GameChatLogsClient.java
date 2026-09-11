@@ -9,6 +9,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
@@ -38,45 +39,59 @@ public final class GameChatLogsClient implements ClientModInitializer {
         thread.setDaemon(true);
         return thread;
     });
-
-    private static final DateTimeFormatter FILE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")
-            .withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter FILE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss").withZone(ZoneId.systemDefault());
     private static final DateTimeFormatter DISPLAY_TIME = DateTimeFormatter.ISO_OFFSET_DATE_TIME.withZone(ZoneId.systemDefault());
-    private static Session session;
+    private static volatile Session session;
 
     @Override
     public void onInitializeClient() {
         CONFIG = GameChatLogsConfig.load();
+
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> startSession(client));
-        ClientReceiveMessageEvents.CHAT.register((message, signedMessage, sender, params, timestamp) -> {
+
+        ClientReceiveMessageEvents.ALLOW_CHAT.register((message, signedMessage, sender, params, timestamp) -> {
             if (CONFIG.enabled) recordChat(message, sender, timestamp);
+            return true;
         });
-        ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+
+        ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
             if (CONFIG.enabled && CONFIG.includeGameMessages) recordGame(message, overlay, Instant.now());
+            return true;
         });
+
+        ClientSendMessageEvents.CHAT.register(message -> {
+            if (CONFIG.enabled) recordOutgoing("chat", message);
+        });
+
+        ClientSendMessageEvents.COMMAND.register(command -> {
+            if (CONFIG.enabled) recordOutgoing("command", "/" + command);
+        });
+
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> finishSession());
     }
 
     private static void startSession(Minecraft client) {
         if (!CONFIG.enabled) return;
         finishSession();
+
         ServerData server = client.getCurrentServer();
         String address = server == null || server.ip == null || server.ip.isBlank() ? "unknown-server" : server.ip;
         String playerName = client.player == null ? "unknown" : client.player.getName().getString();
         UUID uuid = client.player == null ? null : client.player.getUUID();
-        Path root = resolveStorageRoot();
-        Path serverDir = root.resolve(sanitize(address));
-        session = new Session(address, extractPort(address), playerName, uuid, serverDir, Instant.now());
-        Session current = session;
-        CompletableFuture.runAsync(() -> {
-            try {
-                Files.createDirectories(serverDir.resolve("latest"));
-                Files.writeString(serverDir.resolve("latest").resolve("log.txt"), header(current), StandardCharsets.UTF_8,
-                        StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
-                writeJson(current);
-            } catch (IOException ignored) {
-            }
-        }, IO);
+        Path serverDir = resolveStorageRoot().resolve(sanitize(address));
+        Session created = new Session(address, extractPort(address), playerName, uuid, serverDir, Instant.now());
+        session = created;
+        enqueue(() -> initializeFiles(created));
+    }
+
+    private static void initializeFiles(Session current) {
+        try {
+            Files.createDirectories(current.serverDir.resolve("latest"));
+            Files.writeString(current.serverDir.resolve("latest").resolve("log.txt"), header(current), StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+            writeJson(current);
+        } catch (IOException ignored) {
+        }
     }
 
     private static void recordChat(Component message, GameProfile sender, Instant timestamp) {
@@ -92,12 +107,19 @@ public final class GameChatLogsClient implements ClientModInitializer {
         append(current, "game", "server", message.getString(), overlay, timestamp);
     }
 
+    private static void recordOutgoing(String type, String message) {
+        Session current = session;
+        if (current == null) return;
+        String player = current.playerName;
+        append(current, type, player, message, false, Instant.now());
+    }
+
     private static void append(Session current, String type, String sender, String message, boolean overlay, Instant timestamp) {
         synchronized (current) {
             current.messages.add(new Entry(timestamp, type, sender, message, overlay));
             current.lastUpdated = Instant.now();
         }
-        CompletableFuture.runAsync(() -> {
+        enqueue(() -> {
             try {
                 Files.createDirectories(current.serverDir.resolve("latest"));
                 Files.writeString(current.serverDir.resolve("latest").resolve("log.txt"),
@@ -106,21 +128,26 @@ public final class GameChatLogsClient implements ClientModInitializer {
                 writeJson(current);
             } catch (IOException ignored) {
             }
-        }, IO);
+        });
+    }
+
+    private static void enqueue(Runnable task) {
+        CompletableFuture.runAsync(task, IO);
     }
 
     private static void finishSession() {
         Session current = session;
         session = null;
         if (current == null) return;
-        CompletableFuture.runAsync(() -> {
-            synchronized (current) {
-                current.lastUpdated = Instant.now();
-            }
+
+        enqueue(() -> {
             try {
+                synchronized (current) {
+                    current.lastUpdated = Instant.now();
+                }
                 Files.createDirectories(current.serverDir);
-                String historyName = "history-" + FILE_TIME.format(current.startedAt) + ".log";
                 Path latestTxt = current.serverDir.resolve("latest").resolve("log.txt");
+                String historyName = "history-" + FILE_TIME.format(current.startedAt) + ".log";
                 if (Files.exists(latestTxt)) {
                     Files.copy(latestTxt, current.serverDir.resolve(historyName), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 }
@@ -130,7 +157,7 @@ public final class GameChatLogsClient implements ClientModInitializer {
                 }
             } catch (IOException ignored) {
             }
-        }, IO);
+        });
     }
 
     static Path resolveStorageRoot() {
@@ -158,19 +185,23 @@ public final class GameChatLogsClient implements ClientModInitializer {
 
     private static void writeJson(Session s) throws IOException {
         JsonObject root = new JsonObject();
-        root.addProperty("schema_version", 1);
+        root.addProperty("schema_version", 2);
+
         JsonObject server = new JsonObject();
         server.addProperty("address", s.address);
         server.addProperty("port", s.port);
         root.add("server", server);
+
         JsonObject sessionJson = new JsonObject();
         sessionJson.addProperty("started_at", s.startedAt.toString());
         sessionJson.addProperty("last_updated", s.lastUpdated.toString());
         root.add("session", sessionJson);
+
         JsonObject player = new JsonObject();
         player.addProperty("name", s.playerName);
         if (s.playerUuid != null) player.addProperty("uuid", s.playerUuid.toString());
         root.add("player", player);
+
         JsonArray messages = new JsonArray();
         synchronized (s) {
             for (Entry entry : s.messages) {
@@ -184,6 +215,7 @@ public final class GameChatLogsClient implements ClientModInitializer {
             }
         }
         root.add("messages", messages);
+
         Files.createDirectories(s.serverDir.resolve("latest"));
         Files.writeString(s.serverDir.resolve("latest").resolve("log.json"), GSON.toJson(root), StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
@@ -211,6 +243,7 @@ public final class GameChatLogsClient implements ClientModInitializer {
         final Instant startedAt;
         volatile Instant lastUpdated;
         final List<Entry> messages = new ArrayList<>();
+
         Session(String address, int port, String playerName, UUID playerUuid, Path serverDir, Instant startedAt) {
             this.address = address;
             this.port = port;
