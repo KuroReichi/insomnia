@@ -8,6 +8,7 @@ on:
       - 'tools/auto-command-mod/**'
       - 'tools/filter-attack/**'
       - 'tools/game-chat-logs/**'
+      - 'tools/no-render-mob-spawner/**'
       - '.github/workflows/build-auto-command.yml'
   workflow_dispatch:
 
@@ -88,4 +89,30 @@ jobs:
         with:
           name: game-chat-logs-26.2
           path: tools/game-chat-logs/build/libs/*.jar
+          if-no-files-found: error
+
+  build-no-render-spawner:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/no-render-mob-spawner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+      - name: Build No Render Mob Spawner
+        run: gradle build --no-daemon
+      - name: Upload No Render Mob Spawner JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: no-render-mob-spawner-26.2
+          path: tools/no-render-mob-spawner/build/libs/*.jar
           if-no-files-found: error
