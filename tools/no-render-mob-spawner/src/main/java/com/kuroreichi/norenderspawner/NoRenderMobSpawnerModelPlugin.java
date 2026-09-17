@@ -11,14 +11,14 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 public final class NoRenderMobSpawnerModelPlugin implements ModelLoadingPlugin {
     @Override
     public void initialize(Context context) {
         context.modifyBlockModelAfterBake().register((model, modelContext) -> {
-            String id = modelContext.id().toString();
-            if (id.startsWith("minecraft:block/spawner")) {
+            if (modelContext.state().is(Blocks.SPAWNER)) {
                 return new SpawnerModelWrapper(model);
             }
             return model;
