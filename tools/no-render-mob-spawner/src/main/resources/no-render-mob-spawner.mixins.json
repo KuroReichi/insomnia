@@ -3,7 +3,6 @@
   "package": "com.kuroreichi.norenderspawner.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "BlockRenderManagerMixin",
     "MobSpawnerBlockEntityRendererMixin"
   ]
 }
